@@ -23,8 +23,6 @@ def get_setup_info(module_path):
 
 (version, docstring) = get_setup_info('pyilluminate')
 
-print(docstring)
-
 setup(name='pyIlluminate',
       version=version,
       description=docstring,
