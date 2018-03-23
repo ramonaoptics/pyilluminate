@@ -15,6 +15,7 @@ dataclasses = "*"
 
 ipython = "*"
 numpy = "*"
+spyder = "*"
 
 
 [requires]
