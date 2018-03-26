@@ -5,6 +5,14 @@ pipelines:
           name: Build and test
           image: markharfouche/test
           script:
-            - python3 setup.py clean -a sdist
             - python3 setup.py clean -a bdist_wheel
             - flake8 setup.py */*.py
+          artifacts:
+            - dist/*
+      - step:
+          name: Deploy to bitbucket
+          image: markharfouche/test
+          deployment: production
+          script:
+            - # curl -X POST --user "${BB_AUTH_USER}":"${BB_AUTH_PASSWORD}" "https://api.bitbucket.org/2.0/repositories/${BITBUCKET_REPO_OWNER}/${BITBUCKET_REPO_SLUG}/downloads" --form files=@"target/output.jar"
+            - ls -lah dist
