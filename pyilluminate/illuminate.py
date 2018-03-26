@@ -5,6 +5,16 @@ from serial import Serial
 from time import sleep
 
 
+"""
+Trigger notes from Zack's code.
+
+Triggers represents the trigger output from each trigger pin on the teensy. The modes can be:
+0 : No triggering
+1 : Trigger at start of frame
+2 : Trigger each update of pattern
+
+"""
+
 @dataclass
 class LED:
     """Generic LED class for setting patterns."""
@@ -359,23 +369,30 @@ class Illuminate:
         raise NotImplemented('Never tested. Wrong SYNTAX')
         return self.ask('ssv.' +'.'.join([str(l) for l in LED_sequence]))
 
-    """
-    COMMAND:
-    rseq / runSequence
-    SYNTAX:
-    rseq, [Delay between each pattern in ms].[trigger mode for index 0].[trigger mode for index 1].[trigger mode for index 2]
-    DESCRIPTION:
-    Runs sequence with specified delay between each update.
-    If update speed is too fast, a: (is shown on the LED array.
-    -----------------------------------
-    COMMAND:
-    rseqf / runSequenceFast
-    SYNTAX:
-    rseqf, [Delay between each pattern in ms].[trigger mode for index 0].[trigger mode for index 1].[trigger mode for index 2]
-    DESCRIPTION:
-    Runs sequence with specified delay between each update. Uses parallel digital IO to acheive very fast speeds. Only available on certain LED arrays.
-    -----------------------------------
-    """
+    def run_sequence(self, delay, trigger_modes):
+        """Runs sequence with specified delay between each update.
+
+        If update speed is too fast, a: (is shown on the LED array.
+        SYNTAX:
+        rseq, [Delay between each pattern in ms].[trigger mode  index 0].[index 1].[index 2]
+        """
+        raise NotImplemented('Never tested')
+        cmd = ('rseq.' + f'{delay * 1000:.0f}' + '.' +
+               '.'.join([f'{mode:.0f}' for mode in trigger_modes]))
+        return self.ask(cmd)
+
+    def run_sequence_fast(self, delay, trigger_modes):
+        """This seems to be badly documented. Make sure to look at the code.
+        -----------------------------------
+        COMMAND:
+        rseqf / runSequenceFast
+        SYNTAX:
+        rseqf, [Delay between each pattern in ms].[trigger mode for index 0].[trigger mode for index 1].[trigger mode for index 2]
+        DESCRIPTION:
+        Runs sequence with specified delay between each update. Uses parallel digital IO to acheive very fast speeds. Only available on certain LED arrays.
+        -----------------------------------
+        """
+        raise NotImplemented('Never tested')
 
     def print_sequence(self):
         """Print sequence values to the terminal.
@@ -390,15 +407,17 @@ class Illuminate:
         """Print sequence length to the terminal."""
         return self.ask('pseql')
 
-    """
-    COMMAND:
-    sseq / stepSequence
-    SYNTAX:
-    sseq.[trigger output mode for index 0].[trigger output mode for index 1],
-    DESCRIPTION:
-    Runs sequence with specified delay between each update. If update speed is too fast, a: (is shown on the LED array.
-    -----------------------------------
-    """
+    def step_sequence(self, trigger_start, trigger_update):
+        """
+        Triggers represents the trigger output from each trigger pin on the teensy. The modes can be:
+        0 : No triggering
+        1 : Trigger at start of frame
+        2 : Trigger each update of pattern
+        """
+        cmd = 'sseq'
+        cmd = cmd + '.' + ('1' if trigger_start else '0')
+        cmd = cmd + '.' + ('1' if trigger_update else '0')
+        return self.ask(cmd)
 
     def reset_sequence(self):
         """Reset sequence index to start.
