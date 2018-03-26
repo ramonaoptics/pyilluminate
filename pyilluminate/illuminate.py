@@ -187,29 +187,23 @@ class Illuminate:
         else:
             return False
 
-    """
-    COMMAND:
-    na / setNa
-    SYNTAX:
-    na.[na * 100]
-    DESCRIPTION:
-    Set na used for bf / df / dpc / cdpc patterns
-    -----------------------------------
-    COMMAND:
-    sc / setColor
-    SYNTAX:
-    sc, [rgbVal] - -or-- sc.[rVal].[gVal].[bVal]
-    DESCRIPTION:
-    Set LED array color
-    -----------------------------------
-    COMMAND:
-    sad / setArrayDistance
-    SYNTAX:
-    sad, [100 * dist(mm) - -or-- 1000 * dist(cm)]
-    DESCRIPTION:
-    Set LED array distance
-    -----------------------------------
-    """
+    def set_NA(self, NA):
+        """Set na used for bf / df / dpc / cdpc patterns."""
+        raise NotImplemented("Never tested")
+        return self.ask(f'na.{NA*100:d}')
+
+    def set_color(self, red, green, blue):
+        """Set LED array color"""
+        raise NotImplemented('Not tested')
+        # sc, [rgbVal] - -or-- sc.[rVal].[gVal].[bVal]
+        l = LED(red=red, green=green, blue=blue)
+        return self.ask('sc.' + str(l))
+
+    def set_array_distance(self, distance):
+        """Set LED array distance."""
+        # sad, [100 * dist(mm) - -or-- 1000 * dist(cm)]
+        raise NotImplemented('Not tested')
+        return self.ask('sad' + f'{distance*1000*100:.0f}')
 
     def turn_on_led(self, leds):
         """Turn on a single LED(or multiple LEDs in an iterable).
@@ -267,50 +261,38 @@ class Illuminate:
         raise NotImplementedError("Never tested")
         return self.ask('df')
 
-    """
-    COMMAND:
-    dpc / halfCircle
-    SYNTAX:
-    dpc.[t / b / l / r] - -or-- dpc.[top / bottom / left / right]
-    DESCRIPTION:
-    Illuminate half - circle(DPC) pattern
-    - ----------------------------------
-    COMMAND:
-    cdpc / colorDpc
-    SYNTAX:
-    cdpc.[rVal], [gVal].[bVal]) - -or-- cdpc.[rgbVal]) - -or-- cdpc
-    DESCRIPTION:
-    Illuminate color DPC(cDPC) pattern
-    - ----------------------------------
-    COMMAND:
-    an / annulus
-    SYNTAX:
-    an.[minNA * 100].[maxNA * 100]
-    DESCRIPTION:
-    Display annulus pattern set by min / max na
-    - ----------------------------------
-    COMMAND:
-    ha / halfAnnulus
-    SYNTAX:
-    ha.[type].[minNA * 100].[maxNA * 100]
-    DESCRIPTION:
-    Illuminate half annulus
-    - ----------------------------------
-    COMMAND:
-    dq / drawQuadrant
-    SYNTAX:
-    dq - -or-- dq.[rVal].[gVal].[bVal]
-    DESCRIPTION:
-    Draws single quadrant
-    - ----------------------------------
-    COMMAND:
-    uv / lu
-    SYNTAX:
-    uv.0
-    DESCRIPTION:
-    Illuminate a uv LED
-    - ----------------------------------
-    """
+    def half_circle(self, pattern):
+        """Illuminate half circle(DPC) pattern"""
+        # dpc.[t / b / l / r] - -or-- dpc.[top / bottom / left / right]
+        raise NotImplemented('Never tested')
+        return self.ask('dpc.' + pattern)
+
+    def half_circle_color(self, red, green, blue):
+        """Illuminate color DPC pattern."""
+        raise NotImplemented('Never tested')
+        return self.ask('cdpc.' + str(LED(red=red, green=green, blue=blue)))
+
+    def annulus(self, minNA, maxNA):
+        """Display annulus pattern set by min/max NA."""
+        raise NotImplemented('Never tested')
+        # an.[minNA * 100].[maxNA * 100]
+        return self.ask(f"an.{minNA*100:.0f}.{maxNA*100:.0f}")
+
+    def half_annulus(self, pattern, minNA, maxNA):
+        """Illuminate half annulus"""
+        raise NotImplemented('Never tested')
+        # Find out what the types are
+        return self.ask(f"ha.{type}.{minNA*100:.0f}.{maxNA*100:.0f}")
+
+    def draw_quadrant(self, red, green, blue):
+        """Draws single quadrant."""
+        raise NotImplemented('Never tested')
+        return self.ask('dq.' + LED(red=red, green=green, blue=blue))
+
+    def illuminate_uv(self, number):
+        """Illuminate UV LED."""
+        raise NotImplemented('Never tested')
+        return self.ask(f'uv.{number}')
 
     def draw_hole(self, hole):
         """Illuminate LEDs around a single hole.
@@ -365,16 +347,19 @@ class Illuminate:
     def set_sequence_length(self, length):
         """Set sequence length in terms of independent patterns."""
         raise NotImplementedError("Never tested")
-        self.ask('ssl,' + str(length))
+        return self.ask('ssl,' + str(length))
+
+    def set_sequence(self, LED_sequence):
+        """Set LED sequence value.
+
+        Parameters
+        ==========
+        LED_sequence: a list of LEDs with their LED number.
+        """
+        raise NotImplemented('Never tested. Wrong SYNTAX')
+        return self.ask('ssv.' +'.'.join([str(l) for l in LED_sequence]))
 
     """
-    COMMAND:
-    ssv / setSeqValue
-    SYNTAX:
-    ssl.[1st LED  # ]. [1st rVal]. [1st gVal]. [1st bVal]. [2nd LED #]. [2nd rVal]. [2nd gVal]. [2nd bVal] ...
-    DESCRIPTION:
-    Set sequence value
-    -----------------------------------
     COMMAND:
     rseq / runSequence
     SYNTAX:
@@ -399,7 +384,7 @@ class Illuminate:
             String Human readable
 
         """
-        return self.ask_string('pseq')
+        return self._ask_string('pseq')
 
     def print_sequence_length(self):
         """Print sequence length to the terminal."""
@@ -458,7 +443,7 @@ class Illuminate:
             Human readable string describing the trigger.
 
         """
-        return self.ask_string('ptr')
+        return self._ask_string('ptr')
 
     def trigger_test(self, index):
         """Wait for trigger pulses on the defined channel."""
@@ -511,41 +496,39 @@ class Illuminate:
         """
         return self.ask('delay.' + f'{t*1000:.0f}')
 
-    """
-    COMMAND:
-    pvals / printVals
-    SYNTAX:
-    pvals
-    DESCRIPTION:
-    Print led values for software interface
-    - ----------------------------------
-    COMMAND:
-    pp / printParams
-    SYNTAX:
-    pp
-    DESCRIPTION:
-    Prints system parameters such as NA, LED Array z - distance, etc. in the format of a json file
-    - ----------------------------------
-    COMMAND:
-    pledpos / printLedPositions
-    SYNTAX:
-    pledpos
-    DESCRIPTION:
-    Prints the positions of each LED in cartesian coordinates.
-    -----------------------------------
-    COMMAND:
-    pledposna / printLedPositionsNa
-    SYNTAX:
-    pledposna
-    DESCRIPTION:
-    Prints the positions of each LED in NA coordinates(NA_x, NA_y, NA_distance
-    """
+    def print_values(self):
+        """Print LED value for software interface."""
+        raise NotImplemented('Never tested')
+        return self._ask_string('pvals')
+
+    def print_parameters_json(self):
+        """Print system parameters in a json file.
+
+        NA, LED Array z - distance, etc.
+        """
+        raise NotImplemented('Never tested')
+        return self._ask_string('pp')
+
+    def print_led_positions(self):
+        """Print the positions of each LED in cartesian coordinates."""
+        raise NotImplemented('Never tested')
+        return self._ask_string('pledpos')
+
+    def print_led_positions_NA(self):
+        """Print the position of each LED in NA coordinates.
+
+        Returns
+        =======
+        NA_x,NA_y,distance
+        """
+        raise NotImplemented('Never testesd')
+        return self._ask_string('pledposna')
 
     def discoparty_demo(self, n_leds=1, time=10):
         """Run a demo routine to show what the array can do.
 
         Parameters
-        == == == == ==
+        ==========
         n_led: Number of LEDs to turn on at once
         time: The amount of time to run the paterns in seconds
 

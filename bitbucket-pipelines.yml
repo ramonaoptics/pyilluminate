@@ -1,0 +1,10 @@
+pipelines:
+  custom:
+    build_and_test:
+      - step:
+          name: Build and test
+          image: markharfouche/test
+          script:
+            - python3 setup.py clean -a sdist
+            - python3 setup.py clean -a bdist_wheel
+            - flake8 setup.py */*.py
