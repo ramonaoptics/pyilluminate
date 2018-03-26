@@ -3,7 +3,8 @@ from warnings import warn
 from dataclasses import dataclass
 from serial import Serial
 from time import sleep
-
+import json
+import numpy as np
 
 """
 Trigger notes from Zack's code.
@@ -15,8 +16,9 @@ Triggers represents the trigger output from each trigger pin on the teensy. The 
 
 """
 
+
 @dataclass
-class Color:
+class LEDColor:
     """Generic class for representing colors."""
 
     red: int = 0
@@ -28,6 +30,16 @@ class Color:
         cmd = [self.red, self.green, self.blue]
         cmd = [str(part) for part in cmd]
         return '.'.join(cmd)
+
+
+@dataclass
+class LEDPosition:
+    """Position of an LED in [meters]."""
+
+    x: float = 0
+    y: float = 0
+    z: float = 0
+
 
 @dataclass
 class LED:
@@ -61,6 +73,19 @@ class Illuminate:
 
         if reboot_on_start:
             self.reboot()
+
+        parameters = json.loads(self.parameters_json)
+        self._device_name = parameters['device_name']
+        self._part_number = parameters['part_number']
+        self._serial_number = parameters['serial_number']
+        self._led_count = parameters['led_count']
+        # self._center_wavelength
+        # self.color_channels
+        self._sequence_bit_depth = parameters['bit_depth']
+
+        # There are a ton of default properties that are not easy to read.
+        # Maybe I can get Zack to implement reading them, but I'm not sure if
+        # that will be possible.
 
     def __del__(self):  # noqa
         self.close()
@@ -169,13 +194,18 @@ class Illuminate:
         """Read data, return as a single string."""
         p = self._ask_list(data, raw)
         if p:
-            return '\n'.join(p)
+            if raw:
+                return ''.join(p)
+            else:
+                return '\n'.join(p)
 
+    @property
     def help(self):
         """Display help information."""
         # Simply print the raw information the way Zack has it formatted.
         return self._ask_string('?', raw=True)
 
+    @property
     def about(self):
         """Display information about this LED Array."""
         # Print the resulting string. Strip away all the superfluous chars
@@ -186,6 +216,7 @@ class Illuminate:
         # This just returns nothing important
         return self.ask('reboot')
 
+    @property
     def version(self):
         """Display controller version number."""
         # returns version number, probably not a decimal number, so
@@ -217,42 +248,49 @@ class Illuminate:
 
     @property
     def NA(self):
+        """Numerical aperture for bf / df / dpc / cdpc patterns."""
         return self._NA
 
     @NA.setter
-    def set_NA(self, NA):
-        """Set na used for bf / df / dpc / cdpc patterns."""
-        raise NotImplemented("Never tested")
-        r = self.ask(f'na.{NA*100:.0f}')
-        self._NA = round(NA, 2)
-        return r
+    def NA(self, value):
+        self.ask(f'na.{value*100:.0f}')
+        self._NA = round(value, 2)
 
     @property
     def color(self):
+        """LED array color."""
         return self._color
 
     @color.setter
-    def set_color(self, red, green, blue):
-        """Set LED array color"""
-        raise NotImplemented('Not tested')
+    def color(self, c):
         # sc, [rgbVal] - -or-- sc.[rVal].[gVal].[bVal]
-        c = Color(red=red, green=green, blue=blue)
-        r = self.ask('sc.' + str(c))
+        self.ask('sc.' + str(c))
         self._color = c
-        return r
 
     @property
     def array_distance(self):
+        """LED array distance."""
         return self._array_distance
 
     @array_distance.setter
-    def set_array_distance(self, distance):
-        """Set LED array distance."""
+    def array_distance(self, distance):
         # sad, [100 * dist(mm) - -or-- 1000 * dist(cm)]
-        raise NotImplemented('Not tested')
-        r = self.ask('sad' + f'{distance*1000*100:.0f}')
+        self.ask('sad.' + f'{distance*1000*100:.0f}')
         self._array_distance = distance
-        return r
+
+    @property
+    def led(self):
+        """Turn on list of LEDs."""
+        return self._led
+
+    @led.setter
+    def led(self, led):
+        if led is None or len(led) == 0:
+            led = None
+            self._led = None
+            self.clear()
+        else:
+            self.turn_on_led(led)
 
     def turn_on_led(self, leds):
         """Turn on a single LED(or multiple LEDs in an iterable).
@@ -273,12 +311,7 @@ class Illuminate:
         return self.ask('l.' + leds)
 
     def clear(self):
-        """Clear the LED array.
-
-        Returns:
-            None
-
-        """
+        """Clear the LED array."""
         return self.ask('x')
 
     def fill_array(self):
@@ -292,41 +325,40 @@ class Illuminate:
 
     def brightfield(self):
         """Display brightfield pattern."""
-        raise NotImplementedError("Never tested")
         return self.ask('bf')
 
     def darkfield(self):
         """Display darkfield pattern."""
-        raise NotImplementedError("Never tested")
         return self.ask('df')
 
     def half_circle(self, pattern):
-        """Illuminate half circle(DPC) pattern"""
-        # dpc.[t / b / l / r] - -or-- dpc.[top / bottom / left / right]
-        raise NotImplemented('Never tested')
+        """Illuminate half circle(DPC) pattern.
+
+        Parameters
+        ----------
+        pattern: should be 'top', 'bottom', 'left' or 'right'
+
+        """
         return self.ask('dpc.' + pattern)
 
     def half_circle_color(self, red, green, blue):
         """Illuminate color DPC pattern."""
-        raise NotImplemented('Never tested')
-        return self.ask('cdpc.' + str(Color(red=red, green=green, blue=blue)))
+        # TODO: should this be a property?
+        return self.ask('cdpc.' + str(LEDColor(red=red, green=green, blue=blue)))
 
     def annulus(self, minNA, maxNA):
         """Display annulus pattern set by min/max NA."""
-        raise NotImplemented('Never tested')
         # an.[minNA * 100].[maxNA * 100]
         return self.ask(f"an.{minNA*100:.0f}.{maxNA*100:.0f}")
 
     def half_annulus(self, pattern, minNA, maxNA):
-        """Illuminate half annulus"""
-        raise NotImplemented('Never tested')
+        """Illuminate half annulus."""
         # Find out what the types are
         return self.ask(f"ha.{type}.{minNA*100:.0f}.{maxNA*100:.0f}")
 
     def draw_quadrant(self, red, green, blue):
         """Draws single quadrant."""
-        raise NotImplemented('Never tested')
-        return self.ask('dq.' + Color(red=red, green=green, blue=blue))
+        return self.ask('dq.' + str(LEDColor(red=red, green=green, blue=blue)))
 
     def illuminate_uv(self, number):
         """Illuminate UV LED."""
@@ -334,12 +366,7 @@ class Illuminate:
         return self.ask(f'uv.{number}')
 
     def draw_hole(self, hole):
-        """Illuminate LEDs around a single hole.
-
-        Returns:
-            None
-
-        """
+        """Illuminate LEDs around a single hole."""
         return self.ask('drawHole.' + str(hole))
 
     def _scan(self, command, delay):
@@ -385,35 +412,33 @@ class Illuminate:
 
     @property
     def sequence_length(self):
+        """Sequence length in terms of independent patterns."""
         return self._sequence_length
 
     @sequence_length.setter
-    def set_sequence_length(self, length):
-        """Set sequence length in terms of independent patterns."""
+    def sequence_length(self, length):
         raise NotImplementedError("Never tested")
-        r = self.ask('ssl,' + str(length))
+        r = self.ask('ssl.' + str(length))
         self._sequence_length = length
         return r
 
     @property
     def sequence(self):
+        """LED sequence value.
+
+        The sequence should be a list of LEDs with their LED number.
+        """
         return self._sequence
 
-    @property.setter
-    def set_sequence(self, LED_sequence):
-        """Set LED sequence value.
-
-        Parameters
-        ==========
-        LED_sequence: a list of LEDs with their LED number.
-        """
+    @sequence.setter
+    def sequence(self, LED_sequence):
         raise NotImplemented('Never tested. Wrong SYNTAX')
-        r = self.ask('ssv.' +'.'.join([str(l) for l in LED_sequence]))
+        r = self.ask('ssv.' + '.'.join([str(l) for l in LED_sequence]))
         self._sequence = LED_sequence
         return r
 
     def run_sequence(self, delay, trigger_modes):
-        """Runs sequence with specified delay between each update.
+        """Run sequence with specified delay between each update.
 
         If update speed is too fast, a: (is shown on the LED array.
         SYNTAX:
@@ -425,7 +450,8 @@ class Illuminate:
         return self.ask(cmd)
 
     def run_sequence_fast(self, delay, trigger_modes):
-        """This seems to be badly documented. Make sure to look at the code.
+        """Badly documented. Make sure to look at the code.
+
         -----------------------------------
         COMMAND:
         rseqf / runSequenceFast
@@ -451,8 +477,11 @@ class Illuminate:
         return self.ask('pseql')
 
     def step_sequence(self, trigger_start, trigger_update):
-        """
-        Triggers represents the trigger output from each trigger pin on the teensy. The modes can be:
+        """Trigger sequence.
+
+        Triggers represents the trigger output from each trigger pin on the
+        teensy. The modes can be:
+
         0 : No triggering
         1 : Trigger at start of frame
         2 : Trigger each update of pattern
@@ -473,24 +502,19 @@ class Illuminate:
 
     @property
     def sequence_bit_depth(self):
+        """Set bit depth of sequence values: 1, 8, [or 16?]."""
         return self._sequence_bit_depth
 
-    @sequence_bit_deth.setter
-    def set_sequence_bit_depth(self, bitdepth):
-        """Set bit depth of sequence values: 1, 8, [or 16?].
+    @sequence_bit_depth.setter
+    def sequence_bit_depth(self, bitdepth):
 
-        Returns:
-            New bitdepth
-
-        """
         # TODO: Don't do value checking upstream fixes
         # https://github.com/zfphil/illuminate/issues/5
         if bitdepth not in [1, 8]:
             raise ValueError("Needs to be 1 or 8")
 
-        r = self.ask('ssbd.' + str(bitdepth))
+        self.ask('ssbd.' + str(bitdepth))
         self._sequence_bit_depth = bitdepth
-        return r
 
     def trigger(self, index):
         """Output TTL trigger pulse to camera."""
@@ -570,28 +594,38 @@ class Illuminate:
         raise NotImplemented('Never tested')
         return self._ask_string('pvals')
 
-    def print_parameters_json(self):
+    @property
+    def parameters_json(self):
         """Print system parameters in a json file.
 
         NA, LED Array z - distance, etc.
         """
-        raise NotImplemented('Never tested')
         return self._ask_string('pp')
 
-    def print_led_positions(self):
-        """Print the positions of each LED in cartesian coordinates."""
-        raise NotImplemented('Never tested')
-        return self._ask_string('pledpos')
+    @property
+    def led_positions(self):
+        """Position of each LED in cartesian coordinates [mm]."""
+        # as dictionary
+        # Units at this point are in mm
+        d = json.loads(self._ask_string('pledpos'))[
+            'led_position_list_cartesian']
+        a = np.ndarray(len(d), dtype=LEDPosition)
 
-    def print_led_positions_NA(self):
+        for key, item in d.items():
+            a[int(key)] = LEDPosition(x=item[0] * 0.001,
+                                      y=item[1] * 0.001,
+                                      z=item[2] * 0.01)
+
+        return a
+
+    @property
+    def led_positions_NA(self):
         """Print the position of each LED in NA coordinates.
 
-        Returns
-        =======
-        NA_x,NA_y,distance
+        Not working: See [PR #8](https://github.com/zfphil/illuminate/pull/8)
         """
-        raise NotImplemented('Never testesd')
-        return self._ask_string('pledposna')
+        # I don't use this (yet), so a pull request is welcome for this
+        return json.loads(self._ask_string('pledposna'))['led_position_list_na']
 
     def discoparty_demo(self, n_leds=1, time=10):
         """Run a demo routine to show what the array can do.
