@@ -9,7 +9,8 @@ import numpy as np
 """
 Trigger notes from Zack's code.
 
-Triggers represents the trigger output from each trigger pin on the teensy. The modes can be:
+Triggers represents the trigger output from each trigger pin on the teensy.
+The modes can be:
 0 : No triggering
 1 : Trigger at start of frame
 2 : Trigger each update of pattern
@@ -344,7 +345,8 @@ class Illuminate:
     def half_circle_color(self, red, green, blue):
         """Illuminate color DPC pattern."""
         # TODO: should this be a property?
-        return self.ask('cdpc.' + str(LEDColor(red=red, green=green, blue=blue)))
+        return self.ask('cdpc.' +
+                        str(LEDColor(red=red, green=green, blue=blue)))
 
     def annulus(self, minNA, maxNA):
         """Display annulus pattern set by min/max NA."""
@@ -442,7 +444,8 @@ class Illuminate:
 
         If update speed is too fast, a: (is shown on the LED array.
         SYNTAX:
-        rseq, [Delay between each pattern in ms].[trigger mode  index 0].[index 1].[index 2]
+        rseq.[Delay between each pattern in ms].
+             [trigger mode  index 0].[index 1].[index 2]
         """
         raise NotImplemented('Never tested')
         cmd = ('rseq.' + f'{delay * 1000:.0f}' + '.' +
@@ -456,9 +459,12 @@ class Illuminate:
         COMMAND:
         rseqf / runSequenceFast
         SYNTAX:
-        rseqf, [Delay between each pattern in ms].[trigger mode for index 0].[trigger mode for index 1].[trigger mode for index 2]
+        rseqf.[Delay between each pattern in ms].[trigger mode for index 0].
+             [trigger mode for index 1].[trigger mode for index 2]
         DESCRIPTION:
-        Runs sequence with specified delay between each update. Uses parallel digital IO to acheive very fast speeds. Only available on certain LED arrays.
+        Runs sequence with specified delay between each update.
+        Uses parallel digital IO to acheive very fast speeds. Only
+        available on certain LED arrays.
         -----------------------------------
         """
         raise NotImplemented('Never tested')
@@ -525,7 +531,8 @@ class Illuminate:
         """Set up hardware(TTL) triggering.
 
         SYNTAX:
-        trs.[trigger index].[trigger pin index].['trigger delay between H and L pulses]
+        trs.[trigger index].[trigger pin index].
+            ['trigger delay between H and L pulses]
         """
         raise NotImplemented("I haven't implemented this yet")
 
@@ -625,7 +632,8 @@ class Illuminate:
         Not working: See [PR #8](https://github.com/zfphil/illuminate/pull/8)
         """
         # I don't use this (yet), so a pull request is welcome for this
-        return json.loads(self._ask_string('pledposna'))['led_position_list_na']
+        j = json.loads(self._ask_string('pledposna'))
+        return j['led_position_list_na']
 
     def discoparty_demo(self, n_leds=1, time=10):
         """Run a demo routine to show what the array can do.
@@ -655,9 +663,9 @@ class Illuminate:
         self.serial.timeout = 6  # Seems to blink for around 5 seconds
         try:
             r = self._finish_demo(time)
-        except:
+        except Exception as inst:
             self.serial.timeout = previous_timeout
-            raise
+            raise inst
         self.serial.timeout = previous_timeout
         return r
 
