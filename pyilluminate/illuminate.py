@@ -200,7 +200,7 @@ class Illuminate:
     def set_NA(self, NA):
         """Set na used for bf / df / dpc / cdpc patterns."""
         raise NotImplemented("Never tested")
-        return self.ask(f'na.{NA*100:d}')
+        return self.ask(f'na.{NA*100:.0f}')
 
     def set_color(self, red, green, blue):
         """Set LED array color"""
