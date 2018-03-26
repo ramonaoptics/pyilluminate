@@ -16,6 +16,20 @@ Triggers represents the trigger output from each trigger pin on the teensy. The 
 """
 
 @dataclass
+class Color:
+    """Generic class for representing colors."""
+
+    red: int = 0
+    green: int = 0
+    blue: int = 0
+
+    def __str__(self):
+        """Print as 'red.green.blue'."""
+        cmd = [self.red, self.green, self.blue]
+        cmd = [str(part) for part in cmd]
+        return '.'.join(cmd)
+
+@dataclass
 class LED:
     """Generic LED class for setting patterns."""
 
@@ -38,11 +52,15 @@ class LED:
 class Illuminate:
     """Controlls a SciMicroscopy Illuminate board."""
 
-    def __init__(self, port, baudrate=115200, timeout=0.500):
+    def __init__(self, port,  reboot_on_start=True,
+                 baudrate=115200, timeout=0.500):
         """Open the Illumination board."""
         if timeout < 0.4:
             warn('Timeout too small, try providing at least 0.5 seconds.')
         self.serial = Serial(port, baudrate=baudrate, timeout=timeout)
+
+        if reboot_on_start:
+            self.reboot()
 
     def __del__(self):  # noqa
         self.close()
@@ -197,23 +215,44 @@ class Illuminate:
         else:
             return False
 
+    @property
+    def NA(self):
+        return self._NA
+
+    @NA.setter
     def set_NA(self, NA):
         """Set na used for bf / df / dpc / cdpc patterns."""
         raise NotImplemented("Never tested")
-        return self.ask(f'na.{NA*100:.0f}')
+        r = self.ask(f'na.{NA*100:.0f}')
+        self._NA = round(NA, 2)
+        return r
 
+    @property
+    def color(self):
+        return self._color
+
+    @color.setter
     def set_color(self, red, green, blue):
         """Set LED array color"""
         raise NotImplemented('Not tested')
         # sc, [rgbVal] - -or-- sc.[rVal].[gVal].[bVal]
-        l = LED(red=red, green=green, blue=blue)
-        return self.ask('sc.' + str(l))
+        c = Color(red=red, green=green, blue=blue)
+        r = self.ask('sc.' + str(c))
+        self._color = c
+        return r
 
+    @property
+    def array_distance(self):
+        return self._array_distance
+
+    @array_distance.setter
     def set_array_distance(self, distance):
         """Set LED array distance."""
         # sad, [100 * dist(mm) - -or-- 1000 * dist(cm)]
         raise NotImplemented('Not tested')
-        return self.ask('sad' + f'{distance*1000*100:.0f}')
+        r = self.ask('sad' + f'{distance*1000*100:.0f}')
+        self._array_distance = distance
+        return r
 
     def turn_on_led(self, leds):
         """Turn on a single LED(or multiple LEDs in an iterable).
@@ -252,22 +291,12 @@ class Illuminate:
         return self.ask('ff')
 
     def brightfield(self):
-        """Display brightfield pattern.
-
-        Returns:
-            None
-
-        """
+        """Display brightfield pattern."""
         raise NotImplementedError("Never tested")
         return self.ask('bf')
 
     def darkfield(self):
-        """Display darkfield pattern.
-
-        Returns:
-            None???
-
-        """
+        """Display darkfield pattern."""
         raise NotImplementedError("Never tested")
         return self.ask('df')
 
@@ -280,7 +309,7 @@ class Illuminate:
     def half_circle_color(self, red, green, blue):
         """Illuminate color DPC pattern."""
         raise NotImplemented('Never tested')
-        return self.ask('cdpc.' + str(LED(red=red, green=green, blue=blue)))
+        return self.ask('cdpc.' + str(Color(red=red, green=green, blue=blue)))
 
     def annulus(self, minNA, maxNA):
         """Display annulus pattern set by min/max NA."""
@@ -297,7 +326,7 @@ class Illuminate:
     def draw_quadrant(self, red, green, blue):
         """Draws single quadrant."""
         raise NotImplemented('Never tested')
-        return self.ask('dq.' + LED(red=red, green=green, blue=blue))
+        return self.ask('dq.' + Color(red=red, green=green, blue=blue))
 
     def illuminate_uv(self, number):
         """Illuminate UV LED."""
@@ -354,11 +383,23 @@ class Illuminate:
         raise NotImplementedError("Never tested")
         return self._scan('b', delay)
 
+    @property
+    def sequence_length(self):
+        return self._sequence_length
+
+    @sequence_length.setter
     def set_sequence_length(self, length):
         """Set sequence length in terms of independent patterns."""
         raise NotImplementedError("Never tested")
-        return self.ask('ssl,' + str(length))
+        r = self.ask('ssl,' + str(length))
+        self._sequence_length = length
+        return r
 
+    @property
+    def sequence(self):
+        return self._sequence
+
+    @property.setter
     def set_sequence(self, LED_sequence):
         """Set LED sequence value.
 
@@ -367,7 +408,9 @@ class Illuminate:
         LED_sequence: a list of LEDs with their LED number.
         """
         raise NotImplemented('Never tested. Wrong SYNTAX')
-        return self.ask('ssv.' +'.'.join([str(l) for l in LED_sequence]))
+        r = self.ask('ssv.' +'.'.join([str(l) for l in LED_sequence]))
+        self._sequence = LED_sequence
+        return r
 
     def run_sequence(self, delay, trigger_modes):
         """Runs sequence with specified delay between each update.
@@ -428,6 +471,11 @@ class Illuminate:
         """
         return self.ask('reseq')
 
+    @property
+    def sequence_bit_depth(self):
+        return self._sequence_bit_depth
+
+    @sequence_bit_deth.setter
     def set_sequence_bit_depth(self, bitdepth):
         """Set bit depth of sequence values: 1, 8, [or 16?].
 
@@ -440,7 +488,9 @@ class Illuminate:
         if bitdepth not in [1, 8]:
             raise ValueError("Needs to be 1 or 8")
 
-        return self.ask('ssbd.' + str(bitdepth))
+        r = self.ask('ssbd.' + str(bitdepth))
+        self._sequence_bit_depth = bitdepth
+        return r
 
     def trigger(self, index):
         """Output TTL trigger pulse to camera."""
