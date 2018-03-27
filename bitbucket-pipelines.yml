@@ -16,7 +16,7 @@ pipelines:
           trigger: manual
           script:
             - for file in `ls dist`; \
-              do;\
+              do \
               curl -X POST --user "${BB_AUTH_USER}":"${BB_AUTH_PASSWORD}" \
               "https://api.bitbucket.org/2.0/repositories/${BITBUCKET_REPO_OWNER}/${BITBUCKET_REPO_SLUG}/downloads" \
               --form files=@"dist/${file}"; \
