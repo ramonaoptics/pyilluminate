@@ -380,7 +380,6 @@ class Illuminate:
         Right now, it seems to be OK since eventually, it will return -= =-
         but who knows.
 
-
         """
         cmd = 'sc' + command
 
