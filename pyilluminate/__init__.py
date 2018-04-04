@@ -8,6 +8,7 @@ Raise exceptions on failure, don't worry about "set" and "get" methods.
 Copyright (C) 2018, Optical Wavefront Laboratories, LLC.
 """
 
-__version__ = "0.1.0"
+__version__ = "0.1.5"
 
-__all__ = ["illuminate"]
+from .illuminate import Illuminate  # noqa
+from .illuminate import LEDColor  # noqa

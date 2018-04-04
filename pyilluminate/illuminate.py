@@ -1,10 +1,11 @@
-import re
-from warnings import warn
-from dataclasses import dataclass
-from serial import Serial
-from time import sleep
 import json
+import re
+from time import sleep
+from warnings import warn
+
 import numpy as np
+from serial import Serial
+
 
 """
 Trigger notes from Zack's code.
@@ -18,13 +19,21 @@ The modes can be:
 """
 
 
-@dataclass
+# @dataclass  # python 3.7 only
 class LEDColor:
     """Generic class for representing colors."""
 
-    red: int = 0
-    green: int = 0
-    blue: int = 0
+    def __init__(self, *, red: int=0, green: int=0, blue: int=0,
+                 brightness: int=None):
+        """Specify the RGB color of the LEDColor."""
+        if brightness is None:
+            self.red = red
+            self.green = green
+            self.blue = blue
+        else:
+            self.red = brightness
+            self.green = brightness
+            self.blue = brightness
 
     def __str__(self):
         """Print as 'red.green.blue'."""
@@ -33,23 +42,28 @@ class LEDColor:
         return '.'.join(cmd)
 
 
-@dataclass
+# @dataclass  # python 3.7 only
 class LEDPosition:
     """Position of an LED in [meters]."""
 
-    x: float = 0
-    y: float = 0
-    z: float = 0
+    def __init__(self, *, x: float=0, y: float=0, z: float=0):
+        """Specify the 3D position of the LED."""
+        self.x = x
+        self.y = y
+        self.z = z
 
 
-@dataclass
+# @dataclass  # 3.7 only
 class LED:
     """Generic LED class for setting patterns."""
 
-    led: int = None
-    red: int = 0
-    green: int = 0
-    blue: int = 0
+    def __init__(self, *, led: int=None, red: int=0,
+                 green: int=0, blue: int=0):
+        """Specify the LED number and the RGB color."""
+        self.led = led
+        self.red = red
+        self.green = green
+        self.blue = blue
 
     def __str__(self):
         """Print as "led.red.green.blue"."""
@@ -65,11 +79,35 @@ class LED:
 class Illuminate:
     """Controlls a SciMicroscopy Illuminate board."""
 
-    def __init__(self, port,  reboot_on_start=True,
+    @staticmethod
+    def find(VID=0x16C0, PID=0x0483):
+        """Find all the com ports that are associated with Illuminate.
+
+        Parameters
+        ----------
+        VID: int
+        Expected vendor ID. Teansy 3.1 0x160C
+        PID: int
+        Expected product ID. Teansy 3.1 0x0483.
+        """
+
+        from serial.tools.list_ports import comports
+        com = comports()
+        devices = []
+        for c in com:
+            if c.vid == VID and c.pid == PID:
+                devices.append(c.device)
+        return devices
+
+    def __init__(self, port=None, reboot_on_start=True,
                  baudrate=115200, timeout=0.500):
         """Open the Illumination board."""
         if timeout < 0.4:
             warn('Timeout too small, try providing at least 0.5 seconds.')
+
+        if port is None:
+            port = Illuminate.find()[0]
+
         self.serial = Serial(port, baudrate=baudrate, timeout=timeout)
 
         if reboot_on_start:
@@ -87,9 +125,6 @@ class Illuminate:
         # There are a ton of default properties that are not easy to read.
         # Maybe I can get Zack to implement reading them, but I'm not sure if
         # that will be possible.
-
-    def __del__(self):  # noqa
-        self.close()
 
     def open(self):
         """Open the serial port. Only useful if you closed it."""
@@ -258,6 +293,15 @@ class Illuminate:
         self._NA = round(value, 2)
 
     @property
+    def brightness(self):
+        return self._brightness
+
+    @brightness.setter
+    def brightness(self, b):
+        self.color = LEDColor(brightness=b)
+        self._brightness = b
+
+    @property
     def color(self):
         """LED array color."""
         return self._color
@@ -268,9 +312,16 @@ class Illuminate:
         self.ask('sc.' + str(c))
         self._color = c
 
+        # Delete brightness since it probably doesn't make sense to have this
+        # defined for arbitrary colors
+        try:
+            del self._brighness
+        except AttributeError:
+            pass
+
     @property
     def array_distance(self):
-        """LED array distance."""
+        """LED array distance in meters."""
         return self._array_distance
 
     @array_distance.setter
@@ -281,12 +332,25 @@ class Illuminate:
 
     @property
     def led(self):
-        """Turn on list of LEDs."""
+        """Turn on list of LEDs.
+
+        Note that the LEDs along the edges do not
+        have all the colors. Therefore, it might be
+        deceiving if you set the color to red, then
+        call
+        ```
+        Illuminate.led = 0
+        ```
+        which makes it seem like it turned off the
+        LEDs, but in fact, it simply set LED #0 to
+        the color red, which for that particular LED
+        doesn't exist.
+        """
         return self._led
 
     @led.setter
     def led(self, led):
-        if led is None or len(led) == 0:
+        if led is None or (not led and led != 0):
             led = None
             self._led = None
             self.clear()
@@ -322,7 +386,11 @@ class Illuminate:
             None
 
         """
-        return self.ask('ff')
+        # TODO: This is a bug. it seems to help
+        # sending the command twice
+        for i in range(2):
+            self.ask('ff')
+            sleep(0.1)
 
     def brightfield(self):
         """Display brightfield pattern."""

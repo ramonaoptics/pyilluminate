@@ -3,18 +3,23 @@ pipelines:
     release-*:
       - step:
          name: Deploy
-         image: markharfouche/python_flake8
+         image: markharfouche/miniconda3
          deployment: production
          script:
            - flake8 setup.py */*.py
-           - python3 setup.py clean -a bdist_wheel
-           - for file in `ls dist`; do curl -X POST --user "${BB_AUTH_USER}":"${BB_AUTH_PASSWORD}" "https://api.bitbucket.org/2.0/repositories/${BITBUCKET_REPO_OWNER}/${BITBUCKET_REPO_SLUG}/downloads" --form files=@"dist/${file}"; done
+           - # python3 setup.py clean -a bdist_wheel
+           - conda build .
+           - conda_file=`conda build . --output`
+           - conda convert --platform win-64 $conda_file -o $CONDA_PREFIX/conda-bld/
+           - dropbox_uploader.sh upload $CONDA_PREFIX/conda-bld/win-64/*.tar.bz2 pyilluminate/win-64/
+           - dropbox_uploader.sh upload $CONDA_PREFIX/conda-bld/linux-64/*.tar.bz2 pyilluminate/linux-64/.
+           - # for file in `ls dist`; do curl -X POST --user "${BB_AUTH_USER}":"${BB_AUTH_PASSWORD}" "https://api.bitbucket.org/2.0/repositories/${BITBUCKET_REPO_OWNER}/${BITBUCKET_REPO_SLUG}/downloads" --form files=@"dist/${file}"; done
 
   custom:
     build_and_test:
       - step:
           name: Build and test
-          image: markharfouche/python_flake8
+          image: markharfouche/miniconda3
           script:
-            - python3 setup.py clean -a bdist_wheel
             - flake8 setup.py */*.py
+            - python3 setup.py clean -a bdist_wheel

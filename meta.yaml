@@ -1,0 +1,26 @@
+{% set data = load_setup_py_data() %}
+
+package:
+  name: pyilluminate
+  version: {{ data.get('version') }}
+
+source:
+  path: .
+
+requirements:
+  build:
+    - python
+    - setuptools
+  run:
+    - python
+    {% for req in data.get('install_requires', []) -%}
+    - {{req}}
+    {% endfor %}
+
+about:
+  home: {{data.get('url')}}
+  license: {{data.get('license')}}
+  license_file: LICENSE
+
+build:
+  include_recipe: False

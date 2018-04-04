@@ -30,5 +30,6 @@ setup(name='pyIlluminate',
       author='Optical Wavefront Laboratories, LLC.',
       author_email='info@opticalwavefrontlabs.com',
       license='BSD',
+      install_requires=['pyserial'],
       packages=find_packages(),
       )
