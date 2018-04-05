@@ -121,6 +121,7 @@ class Illuminate:
         # self._center_wavelength
         # self.color_channels
         self._sequence_bit_depth = parameters['bit_depth']
+        self._mac_address = parameters['mac_address']
 
         # There are a ton of default properties that are not easy to read.
         # Maybe I can get Zack to implement reading them, but I'm not sure if
@@ -234,6 +235,11 @@ class Illuminate:
                 return ''.join(p)
             else:
                 return '\n'.join(p)
+
+    @property
+    def mac_address(self):
+        """MAC Address of the Teansy that drives the LED board."""
+        return self._mac_address
 
     @property
     def help(self):
@@ -386,11 +392,11 @@ class Illuminate:
             None
 
         """
-        # TODO: This is a bug. it seems to help
-        # sending the command twice
-        for i in range(2):
-            self.ask('ff')
-            sleep(0.1)
+        # there seems to be a brownout issue if
+        # you try and fill the array while things are being driven
+        # TODO: add this to light.led =
+        self.clear()
+        return self.ask('ff')
 
     def brightfield(self):
         """Display brightfield pattern."""
