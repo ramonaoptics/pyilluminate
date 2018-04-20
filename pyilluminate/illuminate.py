@@ -127,6 +127,17 @@ class Illuminate:
         # Maybe I can get Zack to implement reading them, but I'm not sure if
         # that will be possible.
 
+        # as dictionary
+        # Units at this point are in mm
+        p = json.loads(self._ask_string('pledpos'))[
+            'led_position_list_cartesian']
+        self._led_positions = np.ndarray(len(p), dtype=LEDPosition)
+
+        for key, item in p.items():
+            self._led_positions[int(key)] = LEDPosition(x=item[0] * 0.001,
+                                                        y=item[1] * 0.001,
+                                                        z=item[2] * 0.01)
+
     def open(self):
         """Open the serial port. Only useful if you closed it."""
         self.serial.open()
@@ -516,17 +527,20 @@ class Illuminate:
         """Run sequence with specified delay between each update.
 
         If update speed is too fast, a: (is shown on the LED array.
-        SYNTAX:
-        rseq.[Delay between each pattern in ms].
-             [trigger mode  index 0].[index 1].[index 2]
         """
+
+        # SYNTAX:
+        # rseq.[Delay between each pattern in ms].
+        #      [trigger mode  index 0].[index 1].[index 2]
         raise NotImplemented('Never tested')
         cmd = ('rseq.' + f'{delay * 1000:.0f}' + '.' +
                '.'.join([f'{mode:.0f}' for mode in trigger_modes]))
         return self.ask(cmd)
 
     def run_sequence_fast(self, delay, trigger_modes):
-        """Badly documented. Make sure to look at the code.
+        """Not implemented yet."""
+        """
+        Badly documented. Make sure to look at the code.
 
         -----------------------------------
         COMMAND:
@@ -561,9 +575,9 @@ class Illuminate:
         Triggers represents the trigger output from each trigger pin on the
         teensy. The modes can be:
 
-        0 : No triggering
-        1 : Trigger at start of frame
-        2 : Trigger each update of pattern
+        0: No triggering
+        1: Trigger at start of frame
+        2: Trigger each update of pattern
         """
         cmd = 'sseq'
         cmd = cmd + '.' + ('1' if trigger_start else '0')
@@ -601,8 +615,8 @@ class Illuminate:
         return self.ask('tr.' + str(index))
 
     def trigger_setup(self, index, pin_index, delay):
-        """Set up hardware(TTL) triggering.
-
+        """Set up hardware(TTL) triggering."""
+        """
         SYNTAX:
         trs.[trigger index].[trigger pin index].
             ['trigger delay between H and L pulses]
@@ -684,25 +698,14 @@ class Illuminate:
 
     @property
     def led_positions(self):
-        """Position of each LED in cartesian coordinates [mm]."""
-        # as dictionary
-        # Units at this point are in mm
-        d = json.loads(self._ask_string('pledpos'))[
-            'led_position_list_cartesian']
-        a = np.ndarray(len(d), dtype=LEDPosition)
-
-        for key, item in d.items():
-            a[int(key)] = LEDPosition(x=item[0] * 0.001,
-                                      y=item[1] * 0.001,
-                                      z=item[2] * 0.01)
-
-        return a
+        """Position of each LED in cartesian coordinates[mm]."""
+        return self._led_positions
 
     @property
     def led_positions_NA(self):
         """Print the position of each LED in NA coordinates.
 
-        Not working: See [PR #8](https://github.com/zfphil/illuminate/pull/8)
+        Not working: See[PR  # 8](https://github.com/zfphil/illuminate/pull/8)
         """
         # I don't use this (yet), so a pull request is welcome for this
         j = json.loads(self._ask_string('pledposna'))
@@ -712,7 +715,7 @@ class Illuminate:
         """Run a demo routine to show what the array can do.
 
         Parameters
-        ==========
+        == == == == ==
         n_led: Number of LEDs to turn on at once
         time: The amount of time to run the paterns in seconds
 
