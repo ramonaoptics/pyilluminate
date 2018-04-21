@@ -99,7 +99,7 @@ class Illuminate:
                 devices.append(c.device)
         return devices
 
-    def __init__(self, port=None, reboot_on_start=True,
+    def __init__(self, *, port=None, reboot_on_start=True,
                  baudrate=115200, timeout=0.500):
         """Open the Illumination board."""
         if timeout < 0.4:
@@ -451,10 +451,6 @@ class Illuminate:
         """Illuminate UV LED."""
         raise NotImplemented('Never tested')
         return self.ask(f'uv.{number}')
-
-    def draw_hole(self, hole):
-        """Illuminate LEDs around a single hole."""
-        return self.ask('drawHole.' + str(hole))
 
     def _scan(self, command, delay):
         """Send generic scan command.
