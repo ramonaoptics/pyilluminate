@@ -42,18 +42,6 @@ class LEDColor:
         return '.'.join(cmd)
 
 
-# @dataclass  # python 3.7 only
-class LEDPosition:
-    """Position of an LED in [meters]."""
-
-    def __init__(self, *, x: float=0, y: float=0, z: float=0):
-        """Specify the 3D position of the LED."""
-        self.x = x
-        self.y = y
-        self.z = z
-
-
-# @dataclass  # 3.7 only
 class LED:
     """Generic LED class for setting patterns."""
 
@@ -131,12 +119,15 @@ class Illuminate:
         # Units at this point are in mm
         p = json.loads(self._ask_string('pledpos'))[
             'led_position_list_cartesian']
-        self._led_positions = np.ndarray(len(p), dtype=LEDPosition)
+        self.N_leds = len(p)
+        self._led_positions = np.empty(self.N_leds , dtype=[('x', float),
+                                                            ('y', float),
+                                                            ('z', float)])
 
         for key, item in p.items():
-            self._led_positions[int(key)] = LEDPosition(x=item[0] * 0.001,
-                                                        y=item[1] * 0.001,
-                                                        z=item[2] * 0.01)
+            self._led_positions[int(key)]['x'] = item[0] * 0.001
+            self._led_positions[int(key)]['y'] = item[1] * 0.001
+            self._led_positions[int(key)]['z'] = item[2] * 0.01
 
     def open(self):
         """Open the serial port. Only useful if you closed it."""
@@ -367,8 +358,7 @@ class Illuminate:
 
     @led.setter
     def led(self, led):
-        if led is None or (not led and led != 0):
-            led = None
+        if led is None:
             self._led = None
             self.clear()
         else:
@@ -711,7 +701,7 @@ class Illuminate:
         """Run a demo routine to show what the array can do.
 
         Parameters
-        == == == == ==
+        ==========
         n_led: Number of LEDs to turn on at once
         time: The amount of time to run the paterns in seconds
 
