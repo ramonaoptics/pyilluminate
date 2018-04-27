@@ -1,8 +1,8 @@
 import ast
 import re
-
 from pathlib import Path
-from setuptools import setup, find_packages
+
+from setuptools import find_packages, setup
 
 
 def get_setup_info(module_path):

@@ -120,9 +120,9 @@ class Illuminate:
         p = json.loads(self._ask_string('pledpos'))[
             'led_position_list_cartesian']
         self.N_leds = len(p)
-        self._led_positions = np.empty(self.N_leds , dtype=[('x', float),
-                                                            ('y', float),
-                                                            ('z', float)])
+        self._led_positions = np.empty(self.N_leds, dtype=[('x', float),
+                                                           ('y', float),
+                                                           ('z', float)])
 
         for key, item in p.items():
             self._led_positions[int(key)]['x'] = item[0] * 0.001
