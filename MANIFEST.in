@@ -1,0 +1,2 @@
+include versioneer.py
+include pyilluminate/_version.py
