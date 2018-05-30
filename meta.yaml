@@ -9,10 +9,10 @@ source:
 
 requirements:
   build:
-    - python
-    - setuptools
+    - python >=3
+    - pip
   run:
-    - python
+    - python >=3
     {% for req in data.get('install_requires', []) -%}
     - {{req}}
     {% endfor %}
@@ -23,4 +23,8 @@ about:
   license_file: LICENSE
 
 build:
+  number: 0
   include_recipe: False
+  noarch: python
+  script:
+    - python -m pip install --no-deps --ignore-installed .
