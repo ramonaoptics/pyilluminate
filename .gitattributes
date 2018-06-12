@@ -1,1 +1,2 @@
 pyilluminate/_version.py export-subst
+pyilluminate/_static_version.py export-subst
