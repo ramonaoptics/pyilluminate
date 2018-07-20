@@ -88,18 +88,19 @@ class Illuminate:
         return devices
 
     def __init__(self, *, port=None, reboot_on_start=True,
-                 baudrate=115200, timeout=0.500):
+                 baudrate=115200, timeout=0.500, open_device=True):
         """Open the Illumination board."""
         if timeout < 0.4:
             warn('Timeout too small, try providing at least 0.5 seconds.')
 
         if port is None:
             port = Illuminate.find()[0]
-
-        self.serial = Serial(port, baudrate=baudrate, timeout=timeout)
-
-        if reboot_on_start:
-            self.reboot()
+        self.reboot_on_start = reboot_on_start
+        self.serial = Serial(port=None,
+                             baudrate=baudrate, timeout=timeout)
+        self.serial.port = port
+        if open_device:
+            self.open()
 
         parameters = json.loads(self.parameters_json)
         self._device_name = parameters['device_name']
@@ -125,13 +126,26 @@ class Illuminate:
                                                            ('z', float)])
 
         for key, item in p.items():
+            # x, y units in mm
+            # z unitz in cm
             self._led_positions[int(key)]['x'] = item[0] * 0.001
             self._led_positions[int(key)]['y'] = item[1] * 0.001
             self._led_positions[int(key)]['z'] = item[2] * 0.01
 
+    def __enter__(self):
+        self.open()
+        return self
+
+    def __exit__(self, *args):
+        self.close()
+
     def open(self):
         """Open the serial port. Only useful if you closed it."""
-        self.serial.open()
+        if not self.serial.isOpen():
+            self.serial.open()
+        self.serial.flush()
+        if self.reboot_on_start:
+            self.reboot()
 
     def close(self):
         """Force close the serial port."""
