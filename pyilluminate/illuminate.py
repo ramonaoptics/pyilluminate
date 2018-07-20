@@ -149,7 +149,9 @@ class Illuminate:
 
     def close(self):
         """Force close the serial port."""
-        self.serial.close()
+        if self.serial.isOpen():
+            self.clear()
+            self.serial.close()
 
     def write(self, data):
         """Write data to the port.
