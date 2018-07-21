@@ -93,15 +93,21 @@ class Illuminate:
         if timeout < 0.4:
             warn('Timeout too small, try providing at least 0.5 seconds.')
 
-        if port is None:
-            port = Illuminate.find()[0]
         self.reboot_on_start = reboot_on_start
         self.serial = Serial(port=None,
                              baudrate=baudrate, timeout=timeout)
-        self.serial.port = port
+        if port is None:
+            self.serial.port = Illuminate.find()[0]
+        else:
+            self.serial.port = port
         if open_device:
             self.open()
 
+    def _load_parameters(self):
+        """Read the parameters from the illuminate board.
+
+        Function is called automatically when the device is opened.
+        """
         parameters = json.loads(self.parameters_json)
         self._device_name = parameters['device_name']
         self._part_number = parameters['part_number']
@@ -146,6 +152,7 @@ class Illuminate:
         self.serial.flush()
         if self.reboot_on_start:
             self.reboot()
+        self._load_parameters()
 
     def close(self):
         """Force close the serial port."""
