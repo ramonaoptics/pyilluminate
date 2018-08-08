@@ -149,6 +149,8 @@ class Illuminate:
         """Open the serial port. Only useful if you closed it."""
         if not self.serial.isOpen():
             self.serial.open()
+        self.serial.reset_output_buffer()
+        self.serial.reset_input_buffer()
         self.serial.flush()
         if self.reboot_on_start:
             self.reboot()
