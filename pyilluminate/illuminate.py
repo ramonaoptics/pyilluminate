@@ -399,6 +399,9 @@ class Illuminate:
             None
 
         """
+        if isinstance(leds, np.ndarray):
+            # As 1D
+            leds = leds.reshape(-1)
         try:
             leds = [str(led) for led in leds]
             leds = '.'.join(leds)
