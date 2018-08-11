@@ -7,24 +7,27 @@ package:
 source:
   path: .
 
-requirements:
-  build:
-    - python >=3
-    - pip
-  run:
-    - python >=3
-    {% for req in data.get('install_requires', []) -%}
-    - {{req}}
-    {% endfor %}
-
-about:
-  home: {{data.get('url')}}
-  license: {{data.get('license')}}
-  license_file: LICENSE
-
 build:
   number: 0
   include_recipe: False
   noarch: python
   script:
     - python -m pip install --no-deps --ignore-installed .
+
+requirements:
+  build:
+    - python >=3
+    - pip
+  run:
+    - python >=3
+    - pyserial
+    - xarray
+
+about:
+  home: {{data.get('url')}}
+  license: {{data.get('license')}}
+  license_file: LICENSE
+
+test:
+ imports:
+   - pyilluminate
