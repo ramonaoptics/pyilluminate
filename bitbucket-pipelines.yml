@@ -9,7 +9,7 @@ pipelines:
            - flake8 setup.py */*.py
            - # python3 setup.py clean -a bdist_wheel
            - conda build .
-           - dropbox_uploader.sh upload $CONDA_PREFIX/conda-bld/noarch/*.tar.bz2 pyilluminate/noarch/
+           - # dropbox_uploader.sh upload $CONDA_PREFIX/conda-bld/noarch/*.tar.bz2 pyilluminate/noarch/
 
   custom:
     build_and_test:

@@ -156,6 +156,9 @@ class Illuminate:
             self.reboot()
         self._load_parameters()
 
+    def __del__(self):
+        self.close()
+
     def close(self):
         """Force close the serial port."""
         if self.serial.isOpen():
@@ -327,12 +330,16 @@ class Illuminate:
 
     @property
     def brightness(self):
-        return self._brightness
+        if (self._color.red == self._color.blue and
+                self._color.red == self._color.green):
+            return self._color.red
+        else:
+            raise ValueError('The RGB values are not equal. To access their '
+                             'value, use the `color` property instead.')
 
     @brightness.setter
     def brightness(self, b):
         self.color = LEDColor(brightness=b)
-        self._brightness = b
 
     @property
     def color(self):
@@ -344,13 +351,6 @@ class Illuminate:
         # sc, [rgbVal] - -or-- sc.[rVal].[gVal].[bVal]
         self.ask('sc.' + str(c))
         self._color = c
-
-        # Delete brightness since it probably doesn't make sense to have this
-        # defined for arbitrary colors
-        try:
-            del self._brighness
-        except AttributeError:
-            pass
 
     @property
     def array_distance(self):
@@ -407,7 +407,7 @@ class Illuminate:
             leds = '.'.join(leds)
         except TypeError:
             leds = str(leds)
-
+        self.clear()
         return self.ask('l.' + leds)
 
     def clear(self):
@@ -421,9 +421,7 @@ class Illuminate:
             None
 
         """
-        # there seems to be a brownout issue if
-        # you try and fill the array while things are being driven
-        # TODO: add this to light.led =
+
         self.clear()
         return self.ask('ff')
 
