@@ -74,9 +74,10 @@ class Illuminate:
         Parameters
         ----------
         VID: int
-        Expected vendor ID. Teansy 3.1 0x160C
+            Expected vendor ID. Teansy 3.1 0x160C
+
         PID: int
-        Expected product ID. Teansy 3.1 0x0483.
+            Expected product ID. Teansy 3.1 0x0483.
         """
 
         from serial.tools.list_ports import comports
@@ -177,8 +178,10 @@ class Illuminate:
     def read(self, size=10000):
         """Read data from the serial port.
 
-        Returns:
-        bytearray of data
+        Returns
+        -------
+        data: bytearray
+            bytearray of data read.
 
         """
         return self.serial.read(size)
@@ -191,7 +194,9 @@ class Illuminate:
     def read_paragraph(self, raw=False):
         """Read a whole paragraph of text.
 
-        Returns:
+        Returns
+        -------
+        lines: list
             A list of the lines in the paragraph.
 
         """
@@ -300,10 +305,17 @@ class Illuminate:
 
         Can call with or without options.
 
-        Returns:
-            True: LED array will clear before and after each new command
-            False: LED array will NOT clear before and after each new command
+        Parameters
+        ----------
+        value: bool
+            If set to `True`, the LED array will clear before and after each
+            new command. If set to `False`, False: LED array will NOT clear
+            before and after each new command.
 
+        Returns
+        -------
+        value: bool
+            The value of autoclear after the command.
         """
         if value is None:
             s = self._ask_string('ac')
@@ -392,11 +404,13 @@ class Illuminate:
     def turn_on_led(self, leds):
         """Turn on a single LED(or multiple LEDs in an iterable).
 
-        SYNTAX:
-        l.[led  # ].[led #], ...
 
-        Returns:
-            None
+        Parameters
+        ----------
+        leds: single item or list-like
+            If this is single item, then the single LED is turned on.
+            If this is an iterable, such as a list, tuple, or numpy array,
+            turn on all the LEDs listed in the iterable.
 
         """
         if isinstance(leds, np.ndarray):
@@ -408,6 +422,8 @@ class Illuminate:
         except TypeError:
             leds = str(leds)
         self.clear()
+        # SYNTAX:
+        # l.[led  # ].[led #], ...
         return self.ask('l.' + leds)
 
     def clear(self):
@@ -415,12 +431,7 @@ class Illuminate:
         return self.ask('x')
 
     def fill_array(self):
-        """Fill the LED array with default color.
-
-        Returns:
-            None
-
-        """
+        """Fill the LED array with default color."""
 
         self.clear()
         return self.ask('ff')
@@ -571,8 +582,10 @@ class Illuminate:
     def print_sequence(self):
         """Print sequence values to the terminal.
 
-        Returns:
-            String Human readable
+        Returns
+        -------
+        s: string
+            Human readable
 
         """
         return self._ask_string('pseq')
@@ -597,12 +610,7 @@ class Illuminate:
         return self.ask(cmd)
 
     def reset_sequence(self):
-        """Reset sequence index to start.
-
-        Returns:
-            None
-
-        """
+        """Reset sequence index to start."""
         return self.ask('reseq')
 
     @property
@@ -638,7 +646,9 @@ class Illuminate:
     def trigger_print(self):
         """Print information about the current i / o trigger setting.
 
-        Returns:
+        Returns
+        -------
+        s: string
             Human readable string describing the trigger.
 
         """
@@ -727,9 +737,12 @@ class Illuminate:
         """Run a demo routine to show what the array can do.
 
         Parameters
-        ==========
-        n_led: Number of LEDs to turn on at once
-        time: The amount of time to run the paterns in seconds
+        ----------
+        n_led:
+            Number of LEDs to turn on at once
+
+        time:
+            The amount of time to run the paterns in seconds
 
         """
         self.write('disco.' + str(n_leds))
