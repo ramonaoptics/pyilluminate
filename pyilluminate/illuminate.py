@@ -723,6 +723,32 @@ class Illuminate:
         """Position of each LED in cartesian coordinates[mm]."""
         return self._led_positions
 
+    def positions_as_xarray(self):
+        import xarray as xr
+        positions = np.zeros((len(self.led_positions), 3))
+        positions[:, 2] = self.led_positions['x']
+        positions[:, 1] = self.led_positions['y']
+        positions[:, 0] = self.led_positions['z']
+        # The boards have a 1 mm offset in each dimension I think
+        positions[:, 1:3] += 0.001
+
+        positions = xr.DataArray(
+            positions, dims=['led_number', 'zyx'],
+            coords={'led_number': np.arange(len(positions)),
+                    'zyx': ['z', 'y', 'x']})
+
+        uv_leds = self.uv_leds
+
+        rgb_or_uv = xr.DataArray(
+            np.empty(len(positions), dtype='<U3'),
+            dims=['led_number'],
+            coords={'led_number': np.arange(len(positions))})
+        rgb_or_uv[...] = 'rgb'
+        rgb_or_uv[uv_leds] = 'uv'
+        # %%
+        positions = positions.assign_coords(rgb_or_uv=rgb_or_uv)
+        return positions
+
     @property
     def led_positions_NA(self):
         """Print the position of each LED in NA coordinates.
