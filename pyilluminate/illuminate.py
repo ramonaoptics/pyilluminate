@@ -74,9 +74,10 @@ class Illuminate:
         Parameters
         ----------
         VID: int
-        Expected vendor ID. Teansy 3.1 0x160C
+            Expected vendor ID. Teansy 3.1 0x160C
+
         PID: int
-        Expected product ID. Teansy 3.1 0x0483.
+            Expected product ID. Teansy 3.1 0x0483.
         """
 
         from serial.tools.list_ports import comports
@@ -156,6 +157,9 @@ class Illuminate:
             self.reboot()
         self._load_parameters()
 
+    def __del__(self):
+        self.close()
+
     def close(self):
         """Force close the serial port."""
         if self.serial.isOpen():
@@ -174,8 +178,10 @@ class Illuminate:
     def read(self, size=10000):
         """Read data from the serial port.
 
-        Returns:
-        bytearray of data
+        Returns
+        -------
+        data: bytearray
+            bytearray of data read.
 
         """
         return self.serial.read(size)
@@ -188,7 +194,9 @@ class Illuminate:
     def read_paragraph(self, raw=False):
         """Read a whole paragraph of text.
 
-        Returns:
+        Returns
+        -------
+        lines: list
             A list of the lines in the paragraph.
 
         """
@@ -297,10 +305,17 @@ class Illuminate:
 
         Can call with or without options.
 
-        Returns:
-            True: LED array will clear before and after each new command
-            False: LED array will NOT clear before and after each new command
+        Parameters
+        ----------
+        value: bool
+            If set to `True`, the LED array will clear before and after each
+            new command. If set to `False`, False: LED array will NOT clear
+            before and after each new command.
 
+        Returns
+        -------
+        value: bool
+            The value of autoclear after the command.
         """
         if value is None:
             s = self._ask_string('ac')
@@ -327,12 +342,16 @@ class Illuminate:
 
     @property
     def brightness(self):
-        return self._brightness
+        if (self._color.red == self._color.blue and
+                self._color.red == self._color.green):
+            return self._color.red
+        else:
+            raise ValueError('The RGB values are not equal. To access their '
+                             'value, use the `color` property instead.')
 
     @brightness.setter
     def brightness(self, b):
         self.color = LEDColor(brightness=b)
-        self._brightness = b
 
     @property
     def color(self):
@@ -344,13 +363,6 @@ class Illuminate:
         # sc, [rgbVal] - -or-- sc.[rVal].[gVal].[bVal]
         self.ask('sc.' + str(c))
         self._color = c
-
-        # Delete brightness since it probably doesn't make sense to have this
-        # defined for arbitrary colors
-        try:
-            del self._brighness
-        except AttributeError:
-            pass
 
     @property
     def array_distance(self):
@@ -392,11 +404,13 @@ class Illuminate:
     def turn_on_led(self, leds):
         """Turn on a single LED(or multiple LEDs in an iterable).
 
-        SYNTAX:
-        l.[led  # ].[led #], ...
 
-        Returns:
-            None
+        Parameters
+        ----------
+        leds: single item or list-like
+            If this is single item, then the single LED is turned on.
+            If this is an iterable, such as a list, tuple, or numpy array,
+            turn on all the LEDs listed in the iterable.
 
         """
         if isinstance(leds, np.ndarray):
@@ -407,7 +421,9 @@ class Illuminate:
             leds = '.'.join(leds)
         except TypeError:
             leds = str(leds)
-
+        self.clear()
+        # SYNTAX:
+        # l.[led  # ].[led #], ...
         return self.ask('l.' + leds)
 
     def clear(self):
@@ -415,15 +431,8 @@ class Illuminate:
         return self.ask('x')
 
     def fill_array(self):
-        """Fill the LED array with default color.
+        """Fill the LED array with default color."""
 
-        Returns:
-            None
-
-        """
-        # there seems to be a brownout issue if
-        # you try and fill the array while things are being driven
-        # TODO: add this to light.led =
         self.clear()
         return self.ask('ff')
 
@@ -573,8 +582,10 @@ class Illuminate:
     def print_sequence(self):
         """Print sequence values to the terminal.
 
-        Returns:
-            String Human readable
+        Returns
+        -------
+        s: string
+            Human readable
 
         """
         return self._ask_string('pseq')
@@ -599,12 +610,7 @@ class Illuminate:
         return self.ask(cmd)
 
     def reset_sequence(self):
-        """Reset sequence index to start.
-
-        Returns:
-            None
-
-        """
+        """Reset sequence index to start."""
         return self.ask('reseq')
 
     @property
@@ -640,7 +646,9 @@ class Illuminate:
     def trigger_print(self):
         """Print information about the current i / o trigger setting.
 
-        Returns:
+        Returns
+        -------
+        s: string
             Human readable string describing the trigger.
 
         """
@@ -715,6 +723,32 @@ class Illuminate:
         """Position of each LED in cartesian coordinates[mm]."""
         return self._led_positions
 
+    def positions_as_xarray(self):
+        import xarray as xr
+        positions = np.zeros((len(self.led_positions), 3))
+        positions[:, 2] = self.led_positions['x']
+        positions[:, 1] = self.led_positions['y']
+        positions[:, 0] = self.led_positions['z']
+        # The boards have a 1 mm offset in each dimension I think
+        positions[:, 1:3] += 0.001
+
+        positions = xr.DataArray(
+            positions, dims=['led_number', 'zyx'],
+            coords={'led_number': np.arange(len(positions)),
+                    'zyx': ['z', 'y', 'x']})
+
+        uv_leds = self.uv_leds
+
+        rgb_or_uv = xr.DataArray(
+            np.empty(len(positions), dtype='<U3'),
+            dims=['led_number'],
+            coords={'led_number': np.arange(len(positions))})
+        rgb_or_uv[...] = 'rgb'
+        rgb_or_uv[uv_leds] = 'uv'
+        # %%
+        positions = positions.assign_coords(rgb_or_uv=rgb_or_uv)
+        return positions
+
     @property
     def led_positions_NA(self):
         """Print the position of each LED in NA coordinates.
@@ -729,9 +763,12 @@ class Illuminate:
         """Run a demo routine to show what the array can do.
 
         Parameters
-        ==========
-        n_led: Number of LEDs to turn on at once
-        time: The amount of time to run the paterns in seconds
+        ----------
+        n_led:
+            Number of LEDs to turn on at once
+
+        time:
+            The amount of time to run the paterns in seconds
 
         """
         self.write('disco.' + str(n_leds))
