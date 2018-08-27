@@ -97,9 +97,7 @@ class Illuminate:
         self.reboot_on_start = reboot_on_start
         self.serial = Serial(port=None,
                              baudrate=baudrate, timeout=timeout)
-        if port is None:
-            self.serial.port = Illuminate.find()[0]
-        else:
+        if port is not None:
             self.serial.port = port
         if open_device:
             self.open()
@@ -157,6 +155,8 @@ class Illuminate:
     def open(self):
         """Open the serial port. Only useful if you closed it."""
         if not self.serial.isOpen():
+            if self.serial.port is None:
+                self.serial.port = Illuminate.find()[0]
             self.serial.open()
         self.serial.reset_output_buffer()
         self.serial.reset_input_buffer()
