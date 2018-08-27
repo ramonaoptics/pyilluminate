@@ -139,6 +139,14 @@ class Illuminate:
             self._led_positions[int(key)]['y'] = item[1] * 0.001
             self._led_positions[int(key)]['z'] = item[2] * 0.01
 
+    @property
+    def led_count(self):
+        return self._led_count
+
+    @property
+    def mac_address(self):
+        return self._mac_address
+
     def __enter__(self):
         self.open()
         return self
@@ -395,11 +403,7 @@ class Illuminate:
 
     @led.setter
     def led(self, led):
-        if led is None:
-            self._led = None
-            self.clear()
-        else:
-            self.turn_on_led(led)
+        self.turn_on_led(led)
 
     def turn_on_led(self, leds):
         """Turn on a single LED(or multiple LEDs in an iterable).
@@ -410,31 +414,41 @@ class Illuminate:
         leds: single item or list-like
             If this is single item, then the single LED is turned on.
             If this is an iterable, such as a list, tuple, or numpy array,
-            turn on all the LEDs listed in the iterable.
+            turn on all the LEDs listed in the iterable. ND numpy arrays are
+            first converted to 1D numpy arrays, then to a list.
 
         """
+        clear_result = self.clear()
+        if leds is None:
+            return clear_result
+
         if isinstance(leds, np.ndarray):
             # As 1D
-            leds = leds.reshape(-1)
+            leds = leds.reshape(-1).tolist()
         try:
+            # Do I need this?
             leds = [str(led) for led in leds]
-            leds = '.'.join(leds)
+            cmd = '.'.join(leds)
         except TypeError:
-            leds = str(leds)
-        self.clear()
+            cmd = str(leds)
         # SYNTAX:
         # l.[led  # ].[led #], ...
-        return self.ask('l.' + leds)
+        result = self.ask('l.' + cmd)
+        self._led = led
 
     def clear(self):
         """Clear the LED array."""
-        return self.ask('x')
+        result = self.ask('x')
+        self._led = None
+        return result
 
     def fill_array(self):
         """Fill the LED array with default color."""
 
         self.clear()
-        return self.ask('ff')
+        result = self.ask('ff')
+        self._led = [*range(self._led_count)]
+        return result
 
     def brightfield(self):
         """Display brightfield pattern."""
