@@ -37,9 +37,12 @@ class LEDColor:
 
     def __str__(self):
         """Print as 'red.green.blue'."""
-        cmd = [self.red, self.green, self.blue]
-        cmd = [str(part) for part in cmd]
+        cmd = [str(part) for part in self]
         return '.'.join(cmd)
+
+    def __iter__(self):
+        for i in self.red, self.green, self.blue:
+            yield i
 
 
 class LED:
@@ -426,15 +429,15 @@ class Illuminate:
             # As 1D
             leds = leds.reshape(-1).tolist()
         try:
-            # Do I need this?
-            leds = [str(led) for led in leds]
-            cmd = '.'.join(leds)
+            cmd = '.'.join((str(led) for led in leds))
         except TypeError:
             cmd = str(leds)
+            # Make it a tuple
+            led = (leds, )
         # SYNTAX:
         # l.[led  # ].[led #], ...
         result = self.ask('l.' + cmd)
-        self._led = led
+        self._led = tuple(led)
 
     def clear(self):
         """Clear the LED array."""
@@ -447,7 +450,7 @@ class Illuminate:
 
         self.clear()
         result = self.ask('ff')
-        self._led = [*range(self._led_count)]
+        self._led = tuple(range(self._led_count))
         return result
 
     def brightfield(self):
