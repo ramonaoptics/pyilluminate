@@ -144,10 +144,6 @@ class Illuminate:
     def led_count(self):
         return self._led_count
 
-    @property
-    def mac_address(self):
-        return self._mac_address
-
     def __enter__(self):
         self.open()
         return self
@@ -438,6 +434,7 @@ class Illuminate:
         # l.[led  # ].[led #], ...
         result = self.ask('l.' + cmd)
         self._led = tuple(led)
+        return result
 
     def clear(self):
         """Clear the LED array."""
