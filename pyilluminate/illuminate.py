@@ -163,6 +163,8 @@ class Illuminate:
         if self.reboot_on_start:
             self.reboot()
         self._load_parameters()
+        # Set the brightness low so we can live
+        self.brightness = 1
 
     def __del__(self):
         self.close()
