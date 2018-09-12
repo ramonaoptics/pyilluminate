@@ -4,7 +4,7 @@ from time import sleep
 from warnings import warn
 
 import numpy as np
-from serial import Serial
+from serial import Serial, SerialException
 
 
 """
@@ -92,10 +92,38 @@ class Illuminate:
         return devices
 
     def __init__(self, *, port=None, reboot_on_start=True,
-                 baudrate=115200, timeout=0.500, open_device=True):
-        """Open the Illumination board."""
+                 baudrate=115200, timeout=0.500, open_device=True,
+                 mac_address=None):
+        """Open the Illumination board.
+
+        Parameters
+        ----------
+        port: string
+            On Windows, this is something like ``'COM4'``.
+            On Linux, this is something like ``'/dev/ttyUSB0'``.
+        reboot_on_start: bool
+            This will cause the microcontroller to reboot itself, sending
+            all the configuration commands to the shift registers as needed.
+        baudrate: int
+            Set to the manufacturer specifications.
+        timeout: float (seconds)
+            A timeout before giving up on receiving commands. A sensible value
+            is something above 400 ms.
+        open_device: bool
+            If True, the __init__ function call will open the device. If false,
+            a manual call to ``open`` needs to be issued.
+        mac_address: string
+            Port numbers may change from computer to computer.
+            If `mac_address` is provided, then ``find_by_mac_address`` is
+            called to find the port associated with the mac address.
+            `mac_address` takes precedence over `port`
+
+        """
         if timeout < 0.4:
             warn('Timeout too small, try providing at least 0.5 seconds.')
+
+        if mac_address is not None:
+            port = self.find_by_mac_address(mac_address)
 
         self.reboot_on_start = reboot_on_start
         self.serial = Serial(port=None,
@@ -104,6 +132,21 @@ class Illuminate:
             self.serial.port = port
         if open_device:
             self.open()
+
+    @classmethod
+    def find_by_mac_address(cls, mac_address):
+        mac_address = mac_address.lower()
+        for port in cls.find():
+            try:
+                with cls(port=port) as dev:
+                    dev_mac_address = dev.mac_address.lower()
+                if dev_mac_address == mac_address:
+                    return port
+            except SerialException:
+                continue
+
+        raise RuntimeError("Couldn't find any Illuminate board with "
+                           f"the MAC address {mac_address}")
 
     def _load_parameters(self):
         """Read the parameters from the illuminate board.
@@ -155,7 +198,7 @@ class Illuminate:
         """Open the serial port. Only useful if you closed it."""
         if not self.serial.isOpen():
             if self.serial.port is None:
-                self.serial.port = Illuminate.find()[0]
+                self.serial.port = self.find()[0]
             self.serial.open()
         self.serial.reset_output_buffer()
         self.serial.reset_input_buffer()
@@ -431,11 +474,11 @@ class Illuminate:
         except TypeError:
             cmd = str(leds)
             # Make it a tuple
-            led = (leds, )
+            leds = (leds, )
         # SYNTAX:
         # l.[led  # ].[led #], ...
         result = self.ask('l.' + cmd)
-        self._led = tuple(led)
+        self._led = tuple(leds)
         return result
 
     def clear(self):
