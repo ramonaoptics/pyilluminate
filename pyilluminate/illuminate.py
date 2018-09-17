@@ -200,9 +200,11 @@ class Illuminate:
             if self.serial.port is None:
                 self.serial.port = self.find()[0]
             self.serial.open()
+        sleep(0.1)
         self.serial.reset_output_buffer()
         self.serial.reset_input_buffer()
         self.serial.flush()
+        assert self.serial.in_waiting == 0
         if self.reboot_on_start:
             self.reboot()
         self._load_parameters()
