@@ -785,8 +785,16 @@ class Illuminate:
         return self._led_positions
 
     def positions_as_xarray(self):
+        """Return the position of the led information as an xarray.DataArray.
+
+        Returns
+        -------
+        led_position: xr.DataArray
+            This dataarray contains a Nx3 matrix that has rows with the
+            ``z, y, x`` coordinates of the leds.
+        """
         import xarray as xr
-        positions = np.zeros((len(self.led_positions), 3))
+        positions = np.empty((len(self.led_positions), 3))
         positions[:, 2] = self.led_positions['x']
         positions[:, 1] = self.led_positions['y']
         positions[:, 0] = self.led_positions['z']
@@ -801,12 +809,10 @@ class Illuminate:
         uv_leds = self.uv_leds
 
         rgb_or_uv = xr.DataArray(
-            np.empty(len(positions), dtype='<U3'),
+            np.full(len(positions), fill_value='rgb', dtype='<U3'),
             dims=['led_number'],
             coords={'led_number': np.arange(len(positions))})
-        rgb_or_uv[...] = 'rgb'
         rgb_or_uv[uv_leds] = 'uv'
-        # %%
         positions = positions.assign_coords(rgb_or_uv=rgb_or_uv)
         return positions
 
