@@ -2,6 +2,7 @@ import json
 import re
 from time import sleep
 from warnings import warn
+from typing import List, Union, Optional
 
 import numpy as np
 from serial import Serial, SerialException
@@ -24,7 +25,7 @@ class LEDColor:
     """Generic class for representing colors."""
 
     def __init__(self, *, red: int=0, green: int=0, blue: int=0,
-                 brightness: int=None):
+                 brightness: int=None) -> None:
         """Specify the RGB color of the LEDColor."""
         if brightness is None:
             self.red = red
@@ -49,7 +50,7 @@ class LED:
     """Generic LED class for setting patterns."""
 
     def __init__(self, *, led: int=None, red: int=0,
-                 green: int=0, blue: int=0):
+                 green: int=0, blue: int=0) -> None:
         """Specify the LED number and the RGB color."""
         self.led = led
         self.red = red
@@ -91,9 +92,9 @@ class Illuminate:
                 devices.append(c.device)
         return devices
 
-    def __init__(self, *, port=None, reboot_on_start=True,
-                 baudrate=115200, timeout=0.500, open_device=True,
-                 mac_address=None):
+    def __init__(self, *, port: str=None, reboot_on_start: bool=True,
+                 baudrate: int=115200, timeout: float=0.500,
+                 open_device: bool=True, mac_address: str=None) -> None:
         """Open the Illumination board.
 
         Parameters
@@ -134,7 +135,7 @@ class Illuminate:
             self.open()
 
     @classmethod
-    def find_by_mac_address(cls, mac_address):
+    def find_by_mac_address(cls, mac_address: str) -> str:
         mac_address = mac_address.lower()
         for port in cls.find():
             try:
@@ -148,7 +149,7 @@ class Illuminate:
         raise RuntimeError("Couldn't find any Illuminate board with "
                            f"the MAC address {mac_address}")
 
-    def _load_parameters(self):
+    def _load_parameters(self) -> None:
         """Read the parameters from the illuminate board.
 
         Function is called automatically when the device is opened.
@@ -184,7 +185,7 @@ class Illuminate:
             self._led_positions[int(key)]['z'] = item[2] * 0.01
 
     @property
-    def led_count(self):
+    def led_count(self) -> int:
         return self._led_count
 
     def __enter__(self):
@@ -194,7 +195,7 @@ class Illuminate:
     def __exit__(self, *args):
         self.close()
 
-    def open(self):
+    def open(self) -> None:
         """Open the serial port. Only useful if you closed it."""
         if not self.serial.isOpen():
             if self.serial.port is None:
@@ -214,13 +215,13 @@ class Illuminate:
     def __del__(self):
         self.close()
 
-    def close(self):
+    def close(self) -> None:
         """Force close the serial port."""
         if self.serial.isOpen():
             self.clear()
             self.serial.close()
 
-    def write(self, data):
+    def write(self, data) -> None:
         """Write data to the port.
 
         If it is a string, encode it as 'utf-8'.
@@ -229,7 +230,7 @@ class Illuminate:
             data = (data + '\n').encode('utf-8')
         self.serial.write(data)
 
-    def read(self, size=10000):
+    def read(self, size: int=10000) -> bytearray:
         """Read data from the serial port.
 
         Returns
@@ -240,12 +241,12 @@ class Illuminate:
         """
         return self.serial.read(size)
 
-    def readline(self):
+    def readline(self) -> str:
         """Call underlying readline and decode as utf-8."""
         b = self.serial.readline()
         return b.decode('utf-8')
 
-    def read_paragraph(self, raw=False):
+    def read_paragraph(self, raw=False) -> List[str]:
         """Read a whole paragraph of text.
 
         Returns
@@ -274,18 +275,18 @@ class Illuminate:
             if '-==-' in line_stripped:
                 return paragraph
 
-    def ask(self, data):
+    def ask(self, data: str) -> Union[int, float, None]:
         """Send data, read the output, check for error, extract a number."""
         p = self._ask_list(data)
         self._check_output(p)
         return self._extract_number(p)
 
-    def _check_output(self, p):
+    def _check_output(self, p) -> None:
         """Check for errors."""
         # Some commands just return -==-
         # If the data is stripped, this would be an empty list
         if not p:
-            return
+            return None
 
         # Error or ERROR are typically returned on error
         # on the first string
@@ -297,10 +298,14 @@ class Illuminate:
         elif 'not implemented yet' in p[0]:
             raise NotImplementedError('\n'.join(p))
 
+        else:
+            return None
+
     def _extract_number(self, p):
         """Return the float or int located at the end of the list of string."""
+        # I don't know how to do mypy for this one!!!
         if not p:
-            return
+            return None
         # Often, if something is returned, it will be a number
         # so we need to extract it from his list
         # Get the last number from the last string
@@ -310,13 +315,15 @@ class Illuminate:
                 return float(number)
             else:
                 return int(number)
+        else:
+            return None
 
-    def _ask_list(self, data, raw=False):
+    def _ask_list(self, data: str, raw: bool=False) -> List[str]:
         """Read data, return as list of strings."""
         self.write(data)
         return self.read_paragraph(raw)
 
-    def _ask_string(self, data, raw=False):
+    def _ask_string(self, data: str, raw: bool =False) -> str:
         """Read data, return as a single string."""
         p = self._ask_list(data, raw)
         if p:
@@ -324,20 +331,22 @@ class Illuminate:
                 return ''.join(p)
             else:
                 return '\n'.join(p)
+        else:
+            return ''
 
     @property
-    def mac_address(self):
+    def mac_address(self) -> str:
         """MAC Address of the Teansy that drives the LED board."""
         return self._mac_address
 
     @property
-    def help(self):
+    def help(self) -> str:
         """Display help information."""
         # Simply print the raw information the way Zack has it formatted.
         return self._ask_string('?', raw=True)
 
     @property
-    def about(self):
+    def about(self) -> str:
         """Display information about this LED Array."""
         # Print the resulting string. Strip away all the superfluous chars
         return self._ask_string('about')
@@ -348,13 +357,13 @@ class Illuminate:
         return self.ask('reboot')
 
     @property
-    def version(self):
+    def version(self) -> str:
         """Display controller version number."""
         # returns version number, probably not a decimal number, so
         # read it as a string
         return self._ask_string('version')
 
-    def autoclear(self, value=None):
+    def autoclear(self, value: bool=None) -> bool:
         """Toggle clearing of array between led updates.
 
         Can call with or without options.
@@ -385,17 +394,17 @@ class Illuminate:
             return False
 
     @property
-    def NA(self):
+    def NA(self) -> float:
         """Numerical aperture for bf / df / dpc / cdpc patterns."""
         return self._NA
 
     @NA.setter
-    def NA(self, value):
+    def NA(self, value: float) -> None:
         self.ask(f'na.{value*100:.0f}')
         self._NA = round(value, 2)
 
     @property
-    def brightness(self):
+    def brightness(self) -> int:
         if (self._color.red == self._color.blue and
                 self._color.red == self._color.green):
             return self._color.red
@@ -404,33 +413,33 @@ class Illuminate:
                              'value, use the `color` property instead.')
 
     @brightness.setter
-    def brightness(self, b):
+    def brightness(self, b: int):
         self.color = LEDColor(brightness=b)
 
     @property
-    def color(self):
+    def color(self) -> LEDColor:
         """LED array color."""
         return self._color
 
     @color.setter
-    def color(self, c):
+    def color(self, c: LEDColor):
         # sc, [rgbVal] - -or-- sc.[rVal].[gVal].[bVal]
         self.ask('sc.' + str(c))
         self._color = c
 
     @property
-    def array_distance(self):
+    def array_distance(self) -> float:
         """LED array distance in meters."""
         return self._array_distance
 
     @array_distance.setter
-    def array_distance(self, distance):
+    def array_distance(self, distance: float):
         # sad, [100 * dist(mm) - -or-- 1000 * dist(cm)]
         self.ask('sad.' + f'{distance*1000*100:.0f}')
         self._array_distance = distance
 
     @property
-    def led(self):
+    def led(self) -> List[int]:
         """Turn on list of LEDs.
 
         Note that the LEDs along the edges do not
@@ -448,10 +457,10 @@ class Illuminate:
         return self._led
 
     @led.setter
-    def led(self, led):
+    def led(self, led: Union[int, List[int]]) -> None:
         self.turn_on_led(led)
 
-    def turn_on_led(self, leds):
+    def turn_on_led(self, leds: Union[int, List[int]]) -> None:
         """Turn on a single LED(or multiple LEDs in an iterable).
 
 
@@ -464,48 +473,47 @@ class Illuminate:
             first converted to 1D numpy arrays, then to a list.
 
         """
-        clear_result = self.clear()
-        if leds is None:
-            return clear_result
+        self.clear()
+        if not leds:
+            return None
 
         if isinstance(leds, np.ndarray):
             # As 1D
             leds = leds.reshape(-1).tolist()
-        try:
+
+        if isinstance(leds, list):
             cmd = '.'.join((str(led) for led in leds))
-        except TypeError:
+        else:
             cmd = str(leds)
             # Make it a tuple
-            leds = (leds, )
+            leds = [leds]
         # SYNTAX:
         # l.[led  # ].[led #], ...
-        result = self.ask('l.' + cmd)
-        self._led = tuple(leds)
-        return result
+        # This will raise an error on bad syntax
+        self.ask('l.' + cmd)
+        self._led = leds
 
-    def clear(self):
+    def clear(self) -> None:
         """Clear the LED array."""
-        result = self.ask('x')
-        self._led = None
-        return result
+        self.ask('x')
+        self._led = []
 
-    def fill_array(self):
+    def fill_array(self) -> None:
         """Fill the LED array with default color."""
 
         self.clear()
-        result = self.ask('ff')
-        self._led = tuple(range(self._led_count))
-        return result
+        self.ask('ff')
+        self._led = list(range(self._led_count))
 
-    def brightfield(self):
+    def brightfield(self) -> None:
         """Display brightfield pattern."""
-        return self.ask('bf')
+        self.ask('bf')
 
-    def darkfield(self):
+    def darkfield(self) -> None:
         """Display darkfield pattern."""
-        return self.ask('df')
+        self.ask('df')
 
-    def half_circle(self, pattern):
+    def half_circle(self, pattern: str) ->None:
         """Illuminate half circle(DPC) pattern.
 
         Parameters
@@ -513,34 +521,33 @@ class Illuminate:
         pattern: should be 'top', 'bottom', 'left' or 'right'
 
         """
-        return self.ask('dpc.' + pattern)
+        self.ask('dpc.' + pattern)
 
-    def half_circle_color(self, red, green, blue):
+    def half_circle_color(self, red: int, green: int, blue: int) -> None:
         """Illuminate color DPC pattern."""
         # TODO: should this be a property?
-        return self.ask('cdpc.' +
-                        str(LEDColor(red=red, green=green, blue=blue)))
+        self.ask('cdpc.' + str(LEDColor(red=red, green=green, blue=blue)))
 
-    def annulus(self, minNA, maxNA):
+    def annulus(self, minNA: float, maxNA: float) -> None:
         """Display annulus pattern set by min/max NA."""
         # an.[minNA * 100].[maxNA * 100]
-        return self.ask(f"an.{minNA*100:.0f}.{maxNA*100:.0f}")
+        self.ask(f"an.{minNA*100:.0f}.{maxNA*100:.0f}")
 
-    def half_annulus(self, pattern, minNA, maxNA):
+    def half_annulus(self, pattern: str, minNA: float, maxNA: float) -> None:
         """Illuminate half annulus."""
         # Find out what the types are
-        return self.ask(f"ha.{type}.{minNA*100:.0f}.{maxNA*100:.0f}")
+        self.ask(f"ha.{type}.{minNA*100:.0f}.{maxNA*100:.0f}")
 
-    def draw_quadrant(self, red, green, blue):
+    def draw_quadrant(self, red: int, green: int, blue: int) -> None:
         """Draws single quadrant."""
-        return self.ask('dq.' + str(LEDColor(red=red, green=green, blue=blue)))
+        self.ask('dq.' + str(LEDColor(red=red, green=green, blue=blue)))
 
-    def illuminate_uv(self, number):
+    def illuminate_uv(self, number: int) -> None:
         """Illuminate UV LED."""
         raise NotImplemented('Never tested')
-        return self.ask(f'uv.{number}')
+        self.ask(f'uv.{number}')
 
-    def _scan(self, command, delay):
+    def _scan(self, command: str, delay: Optional[float]):
         """Send generic scan command.
 
         These scan commands seem to just timeout on the COM port.
@@ -555,11 +562,11 @@ class Illuminate:
         # See this issue about the comma vs period
         # https://github.com/zfphil/illuminate/issues/7
         if delay is None:
-            return self.ask(cmd)
+            self.ask(cmd)
         else:
-            return self.ask(cmd + '.' + f"{delay * 1000:.0f}")
+            self.ask(cmd + '.' + f"{delay * 1000:.0f}")
 
-    def scan_full(self, delay=None):
+    def scan_full(self, delay: Optional[float]=None) -> None:
         """Scan all active LEDs.
 
         Sends trigger pulse in between images.
@@ -568,9 +575,9 @@ class Illuminate:
 
         Outputs LED list to serial terminal.
         """
-        return self._scan('f', delay)
+        self._scan('f', delay)
 
-    def scan_brightfield(self, delay=None):
+    def scan_brightfield(self, delay: Optional[float]=None) -> None:
         """Scan all brightfield LEDs.
 
         Sends trigger pulse in between images.
@@ -578,22 +585,20 @@ class Illuminate:
         Outputs LED list to serial terminal.
         """
         raise NotImplementedError("Never tested")
-        return self._scan('b', delay)
+        self._scan('b', delay)
 
     @property
-    def sequence_length(self):
+    def sequence_length(self) -> int:
         """Sequence length in terms of independent patterns."""
         return self._sequence_length
 
     @sequence_length.setter
-    def sequence_length(self, length):
-        raise NotImplementedError("Never tested")
-        r = self.ask('ssl.' + str(length))
+    def sequence_length(self, length: int):
+        self.ask('ssl.' + str(length))
         self._sequence_length = length
-        return r
 
     @property
-    def sequence(self):
+    def sequence(self) -> List[int]:
         """LED sequence value.
 
         The sequence should be a list of LEDs with their LED number.
@@ -601,13 +606,11 @@ class Illuminate:
         return self._sequence
 
     @sequence.setter
-    def sequence(self, LED_sequence):
-        raise NotImplemented('Never tested. Wrong SYNTAX')
-        r = self.ask('ssv.' + '.'.join([str(l) for l in LED_sequence]))
+    def sequence(self, LED_sequence: List[int]) -> None:
+        self.ask('ssv.' + '.'.join([str(l) for l in LED_sequence]))
         self._sequence = LED_sequence
-        return r
 
-    def run_sequence(self, delay, trigger_modes):
+    def run_sequence(self, delay: float, trigger_modes: List[float]) -> None:
         """Run sequence with specified delay between each update.
 
         If update speed is too fast, a: (is shown on the LED array.
@@ -619,7 +622,7 @@ class Illuminate:
         raise NotImplemented('Never tested')
         cmd = ('rseq.' + f'{delay * 1000:.0f}' + '.' +
                '.'.join([f'{mode:.0f}' for mode in trigger_modes]))
-        return self.ask(cmd)
+        self.ask(cmd)
 
     def run_sequence_fast(self, delay, trigger_modes):
         """Not implemented yet."""
@@ -640,7 +643,7 @@ class Illuminate:
         """
         raise NotImplemented('Never tested')
 
-    def print_sequence(self):
+    def print_sequence(self) -> str:
         """Print sequence values to the terminal.
 
         Returns
@@ -750,8 +753,10 @@ class Illuminate:
         """Set pin order(R / G / B) for setup purposes."""
         # Big hack, the LED class basically does what we want,
         # Even though these are pins and not RGB values
-        cmd = 'spo.' + str(LED(led=led, red=red_pin,
-                               green=green_pin, blue=blue_pin))
+        if led is not None:
+            cmd = 'spo.' + '.'.join([led, red_pin, green_pin, blue_pin])
+        else:
+            cmd = 'spo.' + '.'.join([red_pin, green_pin, blue_pin])
         raise NotImplementedError("Never tested")
         return self.write(cmd)
 
@@ -841,7 +846,7 @@ class Illuminate:
         self.write('disco.' + str(n_leds))
         self._finish_demo(time)
 
-    def demo(self, time=10):
+    def demo(self, time: float=10) -> None:
         """Run a demo routine to show what the array can do.
 
         Ok, I don't know what that blinking is doing, when it is blinking, it
@@ -856,14 +861,13 @@ class Illuminate:
         previous_timeout = self.serial.timeout
         self.serial.timeout = 6  # Seems to blink for around 5 seconds
         try:
-            r = self._finish_demo(time)
+            self._finish_demo(time)
         except Exception as inst:
             self.serial.timeout = previous_timeout
             raise inst
         self.serial.timeout = previous_timeout
-        return r
 
-    def water_drop_demo(self, time=10):
+    def water_drop_demo(self, time: float=10) -> None:
         """Water drop demo."""
         # Basically, if you let this one go on, and it actually returns
         # not implemented yet, then your read/write requests will always be
@@ -871,7 +875,7 @@ class Illuminate:
         self.write('water')
         self._finish_demo(time)
 
-    def _finish_demo(self, time):
+    def _finish_demo(self, time: float) -> None:
         sleep(self.serial.timeout)
 
         # If something is waiting so soon, then it is probably an error
@@ -881,4 +885,4 @@ class Illuminate:
             return
 
         sleep(max(time - self.serial.timeout, 0))
-        return self.ask('')
+        self.ask('')

@@ -31,7 +31,8 @@ run:
   - pip install .
   - python -c "import pyilluminate; print(pyilluminate.__version__)"
 
-flake8:
+static_checking:
   script:
-  - pip install flake8
+  - pip install flake8 mypy
   - flake8 pyilluminate setup.py
+  - mypy pyilluminate
