@@ -481,12 +481,13 @@ class Illuminate:
             # As 1D
             leds = leds.reshape(-1).tolist()
 
-        if isinstance(leds, list):
-            cmd = '.'.join((str(led) for led in leds))
-        else:
-            cmd = str(leds)
-            # Make it a tuple
+        try:
+            # Iterable to list
+            leds = list(leds)
+        except TypeError:
+            # Make a singleton a list
             leds = [leds]
+        cmd = '.'.join((str(led) for led in leds))
         # SYNTAX:
         # l.[led  # ].[led #], ...
         # This will raise an error on bad syntax
