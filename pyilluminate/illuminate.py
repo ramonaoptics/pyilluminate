@@ -2,7 +2,9 @@ import json
 import re
 from time import sleep
 from warnings import warn
-from typing import List, Union, Optional
+from typing import List, Union, Optional, Iterable
+import collections
+from distutils.version import LooseVersion
 
 import numpy as np
 from serial import Serial, SerialException
@@ -211,6 +213,16 @@ class Illuminate:
         self._load_parameters()
         # Set the brightness low so we can live
         self.brightness = 1
+
+        if LooseVersion(self.version) > '1.13':
+            # ALl boards that I have in my possension have been updated.
+            # The command color changed in version 0.14 such that
+            # each color would be multiplied by the value of brightness
+            # Therefore, we ensure that the brightness on the chip is set to
+            # max
+            # In fact more normalization is done, but we patch it away
+            # https://github.com/zfphil/illuminate/pull/18
+            self.ask('sb.255')
 
     def __del__(self):
         self.close()
@@ -460,7 +472,7 @@ class Illuminate:
     def led(self, led: Union[int, List[int]]) -> None:
         self.turn_on_led(led)
 
-    def turn_on_led(self, leds: Union[int, List[int]]) -> None:
+    def turn_on_led(self, leds: Union[int, Iterable[int]]) -> None:
         """Turn on a single LED(or multiple LEDs in an iterable).
 
 
@@ -481,10 +493,10 @@ class Illuminate:
             # As 1D
             leds = leds.reshape(-1).tolist()
 
-        try:
-            # Iterable to list
+        # make leds a list
+        if isinstance(leds, collections.Iterable):
             leds = list(leds)
-        except TypeError:
+        else:
             # Make a singleton a list
             leds = [leds]
         cmd = '.'.join((str(led) for led in leds))
