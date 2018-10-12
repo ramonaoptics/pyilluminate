@@ -400,7 +400,7 @@ class Illuminate:
             else:
                 s = self._ask_string('ac.0')
 
-        if int(re.search('\d', s).group(0)):
+        if int(re.search(r'\d', s).group(0)):
             return True
         else:
             return False
