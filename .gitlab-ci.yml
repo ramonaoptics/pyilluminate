@@ -1,38 +1,57 @@
-# This file is a template, and might need editing before it works on your project.
-# Official language image. Look for the different tagged releases at:
-# https://hub.docker.com/r/library/python/tags/
-image: python:3.6
-
-# Change pip's cache directory to be inside the project directory since we can
-# only cache local items.
-variables:
-  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache"
-
-# Pip's cache doesn't store the python packages
-# https://pip.pypa.io/en/stable/reference/pip_install/#caching
-#
-# If you want to also cache the installed packages, you have to install
-# them in a virtualenv and cache it as well.
-cache:
-  paths:
-    - .cache/pip
-    - venv/
-
-before_script:
-  - python -V               # Print out python version for debugging
-  - pip install virtualenv
-  - virtualenv venv
-  - source venv/bin/activate
+.setup:
+  before_script:
+    - call C:\Gitlab-Runner\Miniconda3\Library\bin\conda.bat activate
+    - conda.exe update --override-channels -c defaults -c conda-forge conda
+    - conda.exe config --set show_channel_urls true
+    - conda.exe info
+    - conda.exe config --remove-key channels
+    # I think we are already logged in
+    #- call anaconda login --username ramonaoptics --password %ANACONDA_PASSWORD% --hostname gitlab-windows-runner
+    - conda.exe config --add channels defaults
+    - conda.exe config --add channels conda-forge
+    - conda.exe config --add channels ramonaoptics
+    - conda.exe info
+    - conda.exe remove --name owl-runner --all --force --yes --offline
+    - conda.exe create --name owl-runner --yes
+    - call activate.bat owl-runner
 
 run:
+  extends: .setup
+  tags:
+    - windows
+  stage: build
   script:
-  # These dependencies should be moved into the setup.py script
-  - pip install xarray pyserial
-  - pip install .
-  - python -c "import pyilluminate; print(pyilluminate.__version__)"
+    - conda.exe install --file requirements.txt
+    - python.exe -m pip install . --no-deps
+    - cd ..
+    - python.exe -c "import pyilluminate; print(pyilluminate.__version__)"
 
 static_checking:
+  extends: .setup
+  tags:
+    - windows
+  stage: test
   script:
-  - pip install flake8 mypy
-  - flake8 pyilluminate setup.py
-  - mypy pyilluminate
+    - conda.exe install flake8 mypy
+    - python.exe -m flake8 pyilluminate setup.py
+    - python.exe -m mypy pyilluminate
+
+
+conda_deploy:
+  # Only deploy if a new tag is created
+  only:
+    - tags
+  tags:
+    - windows
+  stage: deploy
+  script:
+    - call C:\Gitlab-Runner\Miniconda3\Library\bin\conda.bat activate
+    - conda.exe config --set show_channel_urls true
+    - conda.exe config --remove-key channels
+    - conda.exe config --add channels defaults
+    - conda.exe config --add channels conda-forge
+    - conda.exe config --add channels ramonaoptics
+    - conda.exe install -n root --yes conda-build
+    - conda.exe config --set anaconda_upload yes
+    - conda.exe build .
+    - conda.exe config --set anaconda_upload no
