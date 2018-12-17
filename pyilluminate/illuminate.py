@@ -392,6 +392,8 @@ class Illuminate:
         value: bool
             The value of autoclear after the command.
         """
+        raise NotImplementedError('Not yet implemented')
+        r"""
         if value is None:
             s = self._ask_string('ac')
         else:
@@ -399,11 +401,15 @@ class Illuminate:
                 s = self._ask_string('ac.1')
             else:
                 s = self._ask_string('ac.0')
-
-        if int(re.search(r'\d', s).group(0)):
+        result = re.search(r'\d', s)
+        if result is None:
+            return False
+        result = result.group(0)
+        if int(result.string):
             return True
         else:
             return False
+        """
 
     @property
     def NA(self) -> float:
@@ -557,7 +563,7 @@ class Illuminate:
 
     def illuminate_uv(self, number: int) -> None:
         """Illuminate UV LED."""
-        raise NotImplemented('Never tested')
+        raise NotImplementedError('Never tested')
         self.ask(f'uv.{number}')
 
     def _scan(self, command: str, delay: Optional[float]):
@@ -632,7 +638,7 @@ class Illuminate:
         # SYNTAX:
         # rseq.[Delay between each pattern in ms].
         #      [trigger mode  index 0].[index 1].[index 2]
-        raise NotImplemented('Never tested')
+        raise NotImplementedError('Never tested')
         cmd = ('rseq.' + f'{delay * 1000:.0f}' + '.' +
                '.'.join([f'{mode:.0f}' for mode in trigger_modes]))
         self.ask(cmd)
@@ -654,7 +660,7 @@ class Illuminate:
         available on certain LED arrays.
         -----------------------------------
         """
-        raise NotImplemented('Never tested')
+        raise NotImplementedError('Never tested')
 
     def print_sequence(self) -> str:
         """Print sequence values to the terminal.
@@ -718,7 +724,7 @@ class Illuminate:
         trs.[trigger index].[trigger pin index].
             ['trigger delay between H and L pulses]
         """
-        raise NotImplemented("I haven't implemented this yet")
+        raise NotImplementedError("I haven't implemented this yet")
 
     def trigger_print(self):
         """Print information about the current i / o trigger setting.
@@ -733,7 +739,7 @@ class Illuminate:
 
     def trigger_test(self, index):
         """Wait for trigger pulses on the defined channel."""
-        raise NotImplemented("I haven't implemented this yet")
+        raise NotImplementedError("I haven't implemented this yet")
         return self.write('trt.' + str(index))
 
     def draw_channel(self, led):
@@ -743,7 +749,7 @@ class Illuminate:
 
     def debug(self, value=None):
         """Set a debug flag. Toggles if value is None."""
-        raise NotImplemented(
+        raise NotImplementedError(
             "I have no clue what he does when things are debugging.")
 
         """
@@ -786,7 +792,7 @@ class Illuminate:
 
     def print_values(self):
         """Print LED value for software interface."""
-        raise NotImplemented('Never tested')
+        raise NotImplementedError('Never tested')
         return self._ask_string('pvals')
 
     @property
