@@ -43,6 +43,9 @@ class LEDColor:
         cmd = [str(part) for part in self]
         return '.'.join(cmd)
 
+    def __repr__(self):
+        return f"LEDColor(red={self.red}, green={self.gree}, blue={self.blue}"
+
     def __iter__(self):
         for i in self.red, self.green, self.blue:
             yield i
