@@ -29,9 +29,8 @@ static_checking:
   stage: test
   script:
     # - conda.exe remove --name owl-runner --all --force --yes --offline
-    - conda.exe create --name owl-runner --yes
+    - conda.exe create --name owl-runner --yes flake8 mypy
     - call activate.bat owl-runner
-    - conda.exe install flake8 mypy
     - python.exe -m flake8 pyilluminate setup.py
     - python.exe -m mypy pyilluminate
 
