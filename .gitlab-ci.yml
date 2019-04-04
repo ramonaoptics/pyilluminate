@@ -78,7 +78,7 @@ static_checking_linux:
   stage: test
   script:
     - conda create --name owl-runner --yes flake8 mypy
-    - conda activate owl-runner
+    - source activate owl-runner
     - python -m flake8 pyilluminate setup.py
     - python -m mypy pyilluminate
 
