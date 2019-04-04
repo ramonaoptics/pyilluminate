@@ -73,7 +73,7 @@ build_linux:
   script:
     - conda build .
 
-static_checking:
+static_checking_linux:
   extends: .setup_linux
   stage: test
   script:
