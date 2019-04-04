@@ -61,11 +61,6 @@ conda_deploy:
     - conda install -n root --yes conda-build conda conda-forge-ci-setup
     - conda config --set anaconda_upload no
     - conda config --show
-    - git submodule init
-    - git submodule update
-    # Don't know why this is needed, but it is
-    # https://github.com/ContinuumIO/anaconda-issues/issues/9190#issuecomment-384697849
-    - sudo yum install -y mesa-libGL.x86_64
 
 build_linux:
   extends: .setup_linux
