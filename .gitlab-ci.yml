@@ -47,3 +47,47 @@ conda_deploy:
     - conda.exe config --set anaconda_upload yes
     - conda.exe build .
     - conda.exe config --set anaconda_upload no
+
+.setup_linux:
+  image: condaforge/linux-anvil-comp7
+  tags:
+    - linux
+  before_script:
+    - conda config --set show_channel_urls true
+    - conda config --remove-key channels
+    - conda config --add channels defaults
+    - conda config --add channels conda-forge
+    - conda config --add channels https://conda.anaconda.org/t/${BINSTAR_TOKEN_READONLY}/ramonaoptics
+    - conda install -n root --yes conda-build conda conda-forge-ci-setup
+    - conda config --set anaconda_upload no
+    - conda config --show
+    - git submodule init
+    - git submodule update
+    # Don't know why this is needed, but it is
+    # https://github.com/ContinuumIO/anaconda-issues/issues/9190#issuecomment-384697849
+    - sudo yum install -y mesa-libGL.x86_64
+
+build_linux:
+  extends: .setup_linux
+  stage: build
+  script:
+    - conda build .
+
+static_checking:
+  extends: .setup_linux
+  stage: test
+  script:
+    - conda create --name owl-runner --yes flake8 mypy
+    - conda activate owl-runner
+    - python -m flake8 pyilluminate setup.py
+    - python -m mypy pyilluminate
+
+deploy_linux:
+  extends: .setup_linux
+  stage: deploy
+  only:
+    - tags
+  script:
+    # tests were already run in the previous step, this just avoid the need for artifacts.
+    - conda build --no-test .
+    - upload_or_check_non_existence . ramonaoptics
