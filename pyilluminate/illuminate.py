@@ -227,7 +227,7 @@ class Illuminate:
             self.close()
             raise RuntimeError(
                 'Could not successfully open the Illuminate board. '
-                'Received JSONDecodeError "' + str(e) +'"')
+                'Received JSONDecodeError "' + str(e) + '"')
         # Set the brightness low so we can live
         self.brightness = 1
 
@@ -549,7 +549,7 @@ class Illuminate:
         """Display darkfield pattern."""
         self.ask('df')
 
-    def half_circle(self, pattern: str) ->None:
+    def half_circle(self, pattern: str) -> None:
         """Illuminate half circle(DPC) pattern.
 
         Parameters
