@@ -1,50 +1,38 @@
-.setup:
-  before_script:
-    - call C:\Gitlab-Runner\Miniconda3\Library\bin\conda.bat activate
-    - conda.exe update --override-channels -c defaults -c conda-forge conda
-    - conda.exe config --set show_channel_urls true
-    - conda.exe info
-    - conda.exe config --remove-key channels
-    # I think we are already logged in
-    #- call anaconda login --username ramonaoptics --password %ANACONDA_PASSWORD% --hostname gitlab-windows-runner
-    - conda.exe config --add channels defaults
-    - conda.exe config --add channels conda-forge
-    - conda.exe config --add channels ramonaoptics
-    - conda.exe install -n root --yes conda-build
-    - conda.exe info
-
-run:
-  extends: .setup
+.setup_linux:
+  image: condaforge/linux-anvil-comp7
   tags:
-    - windows
+    - linux
+  before_script:
+    - conda config --set show_channel_urls true
+    - conda config --remove-key channels
+    - conda config --add channels defaults
+    - conda config --add channels conda-forge
+    - conda config --add channels https://conda.anaconda.org/t/${BINSTAR_TOKEN_READONLY}/ramonaoptics
+    - conda install -n root --yes conda-build conda conda-forge-ci-setup
+    - conda config --set anaconda_upload no
+    - conda config --show
+
+build_linux:
+  extends: .setup_linux
   stage: build
   script:
-    - conda.exe config --set anaconda_upload no
-    - conda.exe build .
+    - conda build .
 
-static_checking:
-  extends: .setup
-  tags:
-    - windows
+static_checking_linux:
+  extends: .setup_linux
   stage: test
   script:
-    - conda.exe remove --name owl-runner --all --force --yes --offline
-    - conda.exe create --name owl-runner --yes
-    - call activate.bat owl-runner
-    - conda.exe install flake8 mypy
-    - python.exe -m flake8 pyilluminate setup.py
-    - python.exe -m mypy pyilluminate
+    - conda create --name owl-runner --yes flake8 mypy
+    - source activate owl-runner
+    - python -m flake8 pyilluminate setup.py
+    - python -m mypy pyilluminate
 
-
-conda_deploy:
-  # Only deploy if a new tag is created
+deploy_linux:
+  extends: .setup_linux
+  stage: deploy
   only:
     - tags
-  tags:
-    - windows
-  stage: deploy
-  extends: .setup
   script:
-    - conda.exe config --set anaconda_upload yes
-    - conda.exe build .
-    - conda.exe config --set anaconda_upload no
+    # tests were already run in the previous step, this just avoid the need for artifacts.
+    - conda build --no-test .
+    - upload_or_check_non_existence . ramonaoptics
