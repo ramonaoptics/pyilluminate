@@ -509,12 +509,13 @@ class Illuminate:
 
         """
         self.clear()
-        if not leds:
-            return None
 
         if isinstance(leds, np.ndarray):
             # As 1D
             leds = leds.reshape(-1).tolist()
+
+        if not leds:
+            return None
 
         # make leds a list
         if isinstance(leds, collections.Iterable):
