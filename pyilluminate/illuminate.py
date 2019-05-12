@@ -150,16 +150,20 @@ class Illuminate:
         p = json.loads(self._ask_string('pledpos'))[
             'led_position_list_cartesian']
         self.N_leds = len(p)
-        self._led_positions = np.empty(self.N_leds, dtype=[('x', float),
-                                                           ('y', float),
-                                                           ('z', float)])
 
+        led_positions = xr.DataArray(
+            np.empty((self.N_leds, 3)),
+            dims=['led_number', 'zyx'],
+            coords={'led_number': np.arange(self.N_leds),
+                    'zyx': ['z', 'y', 'x']})
         for key, item in p.items():
-            # x, y units in mm
-            # z unitz in cm
-            self._led_positions[int(key)]['x'] = item[0] * 0.001
-            self._led_positions[int(key)]['y'] = item[1] * 0.001
-            self._led_positions[int(key)]['z'] = item[2] * 0.01
+            # x, y are provided in units of mm
+            # z is provided in units of cm
+            led_positions[key, 2] = item[0] * 0.001
+            led_positions[key, 1] = item[1] * 0.001
+            led_positions[key, 0] = item[2] * 0.01
+
+        self._led_positions = led_positions
 
     @property
     def led_count(self) -> int:
@@ -799,7 +803,7 @@ class Illuminate:
         return self._ask_string('pp')
 
     @property
-    def led_positions(self):
+    def led_positions(self) -> xr.DataArray:
         """Position of each LED in cartesian coordinates[mm]."""
         return self._led_positions
 
@@ -812,27 +816,11 @@ class Illuminate:
             This dataarray contains a Nx3 matrix that has rows with the
             ``z, y, x`` coordinates of the leds.
         """
-        positions = np.empty((len(self.led_positions), 3))
-        positions[:, 2] = self.led_positions['x']
-        positions[:, 1] = self.led_positions['y']
-        positions[:, 0] = self.led_positions['z']
-        # The boards have a 1 mm offset in each dimension I think
-        positions[:, 1:3] += 0.001
-
-        positions = xr.DataArray(
-            positions, dims=['led_number', 'zyx'],
-            coords={'led_number': np.arange(len(positions)),
-                    'zyx': ['z', 'y', 'x']})
-
-        uv_leds = self.uv_leds
-
-        rgb_or_uv = xr.DataArray(
-            np.full(len(positions), fill_value='rgb', dtype='<U3'),
-            dims=['led_number'],
-            coords={'led_number': np.arange(len(positions))})
-        rgb_or_uv[uv_leds] = 'uv'
-        positions = positions.assign_coords(rgb_or_uv=rgb_or_uv)
-        return positions
+        from warnigns import warn
+        warn("The positons_as_xarray function has been Deprecated and will be "
+             "removed in a future version. Use the led_positions attribute "
+             "directly.")
+        return self.led_positions
 
     @property
     def led_positions_NA(self):
