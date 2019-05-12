@@ -159,6 +159,7 @@ class Illuminate:
         for key, item in p.items():
             # x, y are provided in units of mm
             # z is provided in units of cm
+            key = int(key)
             led_positions[key, 2] = item[0] * 0.001
             led_positions[key, 1] = item[1] * 0.001
             led_positions[key, 0] = item[2] * 0.01
