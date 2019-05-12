@@ -1,3 +1,6 @@
+## 0.3.0.dev
+
+ * Illuminate.led_positions is now an xarray instead of a numpy struct array.
 
 ## release-0.2.9
 
