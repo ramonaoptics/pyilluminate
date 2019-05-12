@@ -2,9 +2,11 @@ import json
 import re
 from time import sleep
 from warnings import warn
-from typing import List, Union, Optional, Iterable
+from typing import List, Union, Optional, Iterable, Tuple
 import collections
 from distutils.version import LooseVersion
+from dataclasses import dataclass
+import xarray as xr
 
 import numpy as np
 from serial import Serial, SerialException
@@ -21,57 +23,27 @@ The modes can be:
 
 """
 
-
-# @dataclass  # python 3.7 only
+@dataclass
 class LEDColor:
     """Generic class for representing colors."""
+    red: int = 0
+    green: int = 0
+    blue: int = 0
+    brightness: Optional[int] = None
+    def __init__(self, *, brightness: int=None,
+                 red: int=0, green: int=0, blue: int=0):
+        if brightness is not None:
+            red = brightness
+            green = brightness
+            blue = brightness
+        self.brightness = brightness
 
-    def __init__(self, *, red: int=0, green: int=0, blue: int=0,
-                 brightness: int=None) -> None:
-        """Specify the RGB color of the LEDColor."""
-        if brightness is None:
-            self.red = red
-            self.green = green
-            self.blue = blue
-        else:
-            self.red = brightness
-            self.green = brightness
-            self.blue = brightness
-
-    def __str__(self):
-        """Print as 'red.green.blue'."""
-        cmd = [str(part) for part in self]
-        return '.'.join(cmd)
-
-    def __repr__(self):
-        return f"LEDColor(red={self.red}, green={self.gree}, blue={self.blue}"
+        self.red = int(red)
+        self.green = int(green)
+        self.blue = int(blue)
 
     def __iter__(self):
-        for i in self.red, self.green, self.blue:
-            yield i
-
-
-class LED:
-    """Generic LED class for setting patterns."""
-
-    def __init__(self, *, led: int=None, red: int=0,
-                 green: int=0, blue: int=0) -> None:
-        """Specify the LED number and the RGB color."""
-        self.led = led
-        self.red = red
-        self.green = green
-        self.blue = blue
-
-    def __str__(self):
-        """Print as "led.red.green.blue"."""
-        if self.led is None:
-            cmd = [self.red, self.green, self.blue]
-        else:
-            cmd = [self.led, self.red, self.green, self.blue]
-
-        cmd = [str(part) for part in cmd]
-        return '.'.join(cmd)
-
+        return (i for i in (self.red, self.green, self.blue))
 
 class Illuminate:
     """Controlls a SciMicroscopy Illuminate board."""
@@ -457,9 +429,14 @@ class Illuminate:
         return self._color
 
     @color.setter
-    def color(self, c: LEDColor):
+    def color(self, c: Union[LEDColor, int, Tuple[int, int, int], List[int]]):
         # sc, [rgbVal] - -or-- sc.[rVal].[gVal].[bVal]
-        self.ask('sc.' + str(c))
+        if isinstance(c, (list, tuple)):
+            c = LEDColor(red=c[0], green=c[1], blue=c[2])
+        elif not isinstance(c, LEDColor):
+            c = LEDColor(brightness=c)
+
+        self.ask(f'sc.{c.red}.{c.green}.{c.blue}')
         self._color = c
 
     @property
@@ -835,7 +812,6 @@ class Illuminate:
             This dataarray contains a Nx3 matrix that has rows with the
             ``z, y, x`` coordinates of the leds.
         """
-        import xarray as xr
         positions = np.empty((len(self.led_positions), 3))
         positions[:, 2] = self.led_positions['x']
         positions[:, 1] = self.led_positions['y']
