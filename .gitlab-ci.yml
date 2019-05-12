@@ -1,8 +1,51 @@
+.setup_windows:
+  tags:
+    - windows
+  before_script:
+    - call D:\Gitlab-Runner\Miniconda3\Library\bin\conda.bat activate
+    - conda.exe config --set show_channel_urls true
+    - conda.exe config --add channels conda-forge
+    - conda.exe config --remove-key channels
+    - conda.exe config --add channels conda-forge
+    - conda.exe config --add channels https://conda.anaconda.org/t/%BINSTAR_TOKEN_READONLY%/ramonaoptics
+    - conda.exe install -n root --yes conda-build conda conda-forge-ci-setup
+    - conda.exe config --set anaconda_upload no
+    - conda.exe config --show
+    - call git submodule init
+    - call git submodule update
+    - conda.exe build purge
+
+build_windows_36:
+  extends: .setup_windows
+  stage: build
+  script:
+    - conda.exe build . -m .ci_support/python3_6.yaml
+
+
+build_windows_37:
+  extends: .setup_windows
+  stage: build
+  script:
+    - conda.exe build . -m .ci_support/python3_7.yaml
+
+deploy_windows:
+  # Only deploy if a new tag is created
+  extends: .setup_windows
+  only:
+    - tags
+  stage: deploy
+  script:
+    # upload both packages when they succeed.
+    # this requires the environment variable BINSTAR_TOKEN to exist
+    - upload_or_check_non_existence . ramonaoptics -m .ci_support/python3_6.yaml
+    - upload_or_check_non_existence . ramonaoptics -m .ci_support/python3_7.yaml
+
 .setup_linux:
   image: condaforge/linux-anvil-comp7
   tags:
     - linux
   before_script:
+    - source /opt/conda/etc/profile.d/conda.sh
     - conda config --set show_channel_urls true
     - conda config --remove-key channels
     - conda config --add channels defaults
@@ -11,21 +54,23 @@
     - conda install -n root --yes conda-build conda conda-forge-ci-setup
     - conda config --set anaconda_upload no
     - conda config --show
+    - git submodule init
+    - git submodule update
+    # Don't know why this is needed, but it is
+    # https://github.com/ContinuumIO/anaconda-issues/issues/9190#issuecomment-384697849
+    - /usr/bin/sudo -n yum install -y mesa-libGL
 
-build_linux:
+build_linux_36:
   extends: .setup_linux
   stage: build
   script:
-    - conda build .
+    - conda build . -m .ci_support/python3_6.yaml
 
-static_checking_linux:
+build_linux_37:
   extends: .setup_linux
-  stage: test
+  stage: build
   script:
-    - conda create --name owl-runner --yes flake8 mypy
-    - source activate owl-runner
-    - python -m flake8 pyilluminate setup.py
-    - python -m mypy pyilluminate
+    - conda build . -m .ci_support/python3_7.yaml
 
 deploy_linux:
   extends: .setup_linux
@@ -34,5 +79,16 @@ deploy_linux:
     - tags
   script:
     # tests were already run in the previous step, this just avoid the need for artifacts.
-    - conda build --no-test .
-    - upload_or_check_non_existence . ramonaoptics
+    - conda build --no-test . -m .ci_support/python3_6.yaml
+    - conda build --no-test . -m .ci_support/python3_7.yaml
+    - upload_or_check_non_existence . ramonaoptics -m .ci_support/python3_6.yaml
+    - upload_or_check_non_existence . ramonaoptics -m .ci_support/python3_7.yaml
+
+static_checking_linux:
+  extends: .setup_linux
+  stage: test
+  script:
+    - conda create --name owl_runner_pyilluminate --yes flake8 mypy
+    - source activate owl-runner
+    - python -m flake8 pyilluminate setup.py
+    - python -m mypy pyilluminate
