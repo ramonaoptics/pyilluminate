@@ -21,10 +21,10 @@ build:
 
 requirements:
   build:
-    - python >=3
+    - python
     - pip
   run:
-    - python >=3
+    - python
     - pyserial
     - xarray
     - numpy
