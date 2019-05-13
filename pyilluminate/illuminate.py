@@ -23,6 +23,7 @@ The modes can be:
 
 """
 
+
 @dataclass
 class LEDColor:
     """Generic class for representing colors."""
@@ -30,6 +31,7 @@ class LEDColor:
     green: int = 0
     blue: int = 0
     brightness: Optional[int] = None
+
     def __init__(self, *, brightness: int=None,
                  red: int=0, green: int=0, blue: int=0):
         if brightness is not None:
@@ -44,6 +46,7 @@ class LEDColor:
 
     def __iter__(self):
         return (i for i in (self.red, self.green, self.blue))
+
 
 class Illuminate:
     """Controlls a SciMicroscopy Illuminate board."""
