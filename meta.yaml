@@ -28,7 +28,7 @@ requirements:
     - pyserial
     - xarray
     - numpy
-    - dataclasses  # [py=='36']
+    - dataclasses  # [py==36]
 
 about:
   home: www.ramonaoptics.com
