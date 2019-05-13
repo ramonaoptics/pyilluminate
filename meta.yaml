@@ -15,19 +15,20 @@ source:
 build:
   number: 1
   include_recipe: False
-  noarch: python
+  # noarch: python
   script:
     - "{{ PYTHON }} -m pip install . --no-deps --ignore-installed --no-cache-dir -vv"
 
 requirements:
   build:
-    - python >=3
+    - python
     - pip
   run:
-    - python >=3
+    - python
     - pyserial
     - xarray
     - numpy
+    - dataclasses  # [py==36]
 
 about:
   home: www.ramonaoptics.com
