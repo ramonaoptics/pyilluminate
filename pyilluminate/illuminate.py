@@ -185,7 +185,12 @@ class Illuminate:
         if not self.serial.isOpen():
             if self.serial.port is None:
                 self.serial.port = self.find()[0]
-            self.serial.open()
+            try:
+                self.serial.open()
+            except SerialException:
+                raise RuntimeError("Must close previous Illuminate connection before establishing a new one. If there "
+                                   "is a previous instance of Illuminate either delete the object or call the 'close' "
+                                   "method")
         sleep(0.1)
 
         self.serial.reset_output_buffer()
