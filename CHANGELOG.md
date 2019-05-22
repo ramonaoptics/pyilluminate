@@ -1,4 +1,8 @@
-## 0.3.0.dev
+## 0.3.1 (dev)
+
+ * Improved the error message when trying to open an Serial connection that is already in use.
+
+## 0.3.0
 
  * Illuminate.led_positions is now an xarray instead of a numpy struct array.
  * ``Illuminate.positions_as_xarray()`` is deprecated in favour of ``Illuminate.led_positions``.
