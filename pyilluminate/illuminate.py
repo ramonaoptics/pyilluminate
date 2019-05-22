@@ -188,9 +188,11 @@ class Illuminate:
             try:
                 self.serial.open()
             except SerialException:
-                raise RuntimeError("Must close previous Illuminate connection before establishing a new one. If there "
-                                   "is a previous instance of Illuminate either delete the object or call the 'close' "
-                                   "method")
+                raise RuntimeError("Must close previous Illuminate connection "
+                                   "before establishing a new one. If there "
+                                   "is a previous instance of Illuminate "
+                                   "either delete the object or call the "
+                                   "'close' method")
         sleep(0.1)
 
         self.serial.reset_output_buffer()
