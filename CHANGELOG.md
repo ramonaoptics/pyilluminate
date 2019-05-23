@@ -1,4 +1,4 @@
-## 0.3.1 (dev)
+## 0.3.1 (2019/05/22)
 
  * Improved the error message when trying to open an Serial connection that is already in use.
 
