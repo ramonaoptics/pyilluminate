@@ -827,7 +827,6 @@ class Illuminate:
             This dataarray contains a Nx3 matrix that has rows with the
             ``z, y, x`` coordinates of the leds.
         """
-        from warnigns import warn
         warn("The positons_as_xarray function has been Deprecated and will be "
              "removed in a future version. Use the led_positions attribute "
              "directly.")
