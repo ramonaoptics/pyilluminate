@@ -1,3 +1,7 @@
+## 0.3.2 (2019/08/19)
+
+ * Fixed up a typo that would cause an error to occur in `positions_as_xarray`.
+
 ## 0.3.1 (2019/05/22)
 
  * Improved the error message when trying to open an Serial connection that is already in use.
