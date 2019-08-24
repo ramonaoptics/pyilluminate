@@ -10,6 +10,7 @@ import xarray as xr
 
 import numpy as np
 from serial import Serial, SerialException
+from serial.tools.list_ports import comports
 
 
 """
@@ -23,6 +24,20 @@ The modes can be:
 
 """
 
+known_devices = [
+    {
+        'serial_number': '2680300',
+        'device_name': 'ramonaoptics-c001',
+        'mac_address': '04:E9:E5:04:16:FE',
+    },
+    {
+        'serial_number': '2681530',
+        'device_name': 'ramonaoptics-c006',
+        'mac_address': '04:E9:E5:04:17:79',
+    },
+]
+
+known_serial_numbers = [d['serial_number'] for d in known_devices]
 
 @dataclass
 class LEDColor:
@@ -47,12 +62,13 @@ class LEDColor:
     def __iter__(self):
         return (i for i in (self.red, self.green, self.blue))
 
-
 class Illuminate:
     """Controlls a SciMicroscopy Illuminate board."""
 
+    VID_PID_s = [(0x16C0, 0x0483)]
+
     @staticmethod
-    def find(VID=0x16C0, PID=0x0483):
+    def find(serial_numbers=known_serial_numbers):
         """Find all the com ports that are associated with Illuminate.
 
         Parameters
@@ -63,18 +79,25 @@ class Illuminate:
         PID: int
             Expected product ID. Teansy 3.1 0x0483.
         """
-
-        from serial.tools.list_ports import comports
         com = comports()
-        devices = []
-        for c in com:
-            if c.vid == VID and c.pid == PID:
-                devices.append(c.device)
+        devices = [c.device
+                   for c in com
+                   if ((c.vid, c.pid) in Illuminate.VID_PID_s and
+                       (serial_numbers is None or
+                        c.serial_number in serial_numbers))]
         return devices
-
+    
+    @staticmethod
+    def list_all_serial_numbers():
+        com = comports()
+        return [c.serial_number
+                for c in com
+                if (c.vid, c.pid) in Illuminate.VID_PID_s]
+        
     def __init__(self, *, port: str=None, reboot_on_start: bool=True,
                  baudrate: int=115200, timeout: float=0.500,
-                 open_device: bool=True, mac_address: str=None) -> None:
+                 open_device: bool=True, mac_address: str=None,
+                 serial_number: str=None) -> None:
         """Open the Illumination board.
 
         Parameters
@@ -104,7 +127,15 @@ class Illuminate:
             warn('Timeout too small, try providing at least 0.5 seconds.')
 
         if mac_address is not None:
-            port = self.find_by_mac_address(mac_address)
+            serial_number = self.serial_by_mac_address(mac_address)
+            from warnings import warn
+            warn(f'The parameter mac_address is deprecated and will be '
+                 f'removed in a future version. Use the parameter '
+                 f'serial_number instead. The serial number associated '
+                 f'with the device with mac_address="{mac_address}" is '
+                 f'"{serial_number}".', stacklevel=2)
+        if serial_number is not None:
+            port = self.find(serial_numbers=[serial_number])[0]
 
         self.reboot_on_start = reboot_on_start
         self.serial = Serial(port=None,
@@ -115,19 +146,12 @@ class Illuminate:
             self.open()
 
     @classmethod
-    def find_by_mac_address(cls, mac_address: str) -> str:
-        mac_address = mac_address.lower()
-        for port in cls.find():
-            try:
-                with cls(port=port) as dev:
-                    dev_mac_address = dev.mac_address.lower()
-                if dev_mac_address == mac_address:
-                    return port
-            except SerialException:
-                continue
-
-        raise RuntimeError("Couldn't find any Illuminate board with "
-                           f"the MAC address {mac_address}")
+    def serial_by_mac_address(cls, mac_address: str) -> str:
+        for dev in known_devices:
+            if dev['mac_address'] == mac_address:
+                return dev['serial_number']
+        else:
+            raise RuntimeError(f'mac_address {mac_address} is not known, use serial number.')
 
     def _load_parameters(self) -> None:
         """Read the parameters from the illuminate board.
