@@ -10,6 +10,7 @@ import xarray as xr
 
 import numpy as np
 from serial import Serial, SerialException
+from serial.tools.list_ports import comports
 
 
 """
@@ -22,6 +23,20 @@ The modes can be:
 2 : Trigger each update of pattern
 
 """
+
+known_devices = [
+    {   # Example device structure
+        'serial_number': 'XXXXXXX',
+        'device_name': 'some_board_name',
+        'mac_address': '01:23:45:67:89:AB',
+    },
+]
+
+known_serial_numbers = [d['serial_number'] for d in known_devices]
+known_mac_addresses = {
+    d['mac_address']: d['serial_number']
+    for d in known_devices
+}
 
 
 @dataclass
@@ -51,30 +66,84 @@ class LEDColor:
 class Illuminate:
     """Controlls a SciMicroscopy Illuminate board."""
 
+    VID_PID_s = [
+        (0x16C0, 0x0483),
+    ]
+    _known_device = known_devices
+    _known_serial_numbers = known_serial_numbers
+    _known_mac_addresses = known_mac_addresses
+
     @staticmethod
-    def find(VID=0x16C0, PID=0x0483):
-        """Find all the com ports that are associated with Illuminate.
+    def find(serial_numbers=None):
+        """Find all the serial ports that are associated with Illuminate.
 
         Parameters
         ----------
-        VID: int
-            Expected vendor ID. Teansy 3.1 0x160C
+        serial_numbers: list of str, or None
+            If provided, will only match the serial numbers that are contained
+            in the provided list.
 
-        PID: int
-            Expected product ID. Teansy 3.1 0x0483.
+        Returns
+        -------
+        devices: list of serial devices
+            List of serial devices
+
+        Note
+        ----
+        If a list of serial numbers is not provided, then this function may
+        match Teensy 3.1/3.2 microcontrollers that are connected to the
+        computer but that may not be associated with the Illuminate boards.
+
         """
-
-        from serial.tools.list_ports import comports
-        com = comports()
-        devices = []
-        for c in com:
-            if c.vid == VID and c.pid == PID:
-                devices.append(c.device)
+        devices, _ = zip(
+            *Illuminate._device_serial_number_pairs(
+                serial_numbers=serial_numbers)
+        )
         return devices
+
+    @staticmethod
+    def list_all_serial_numbers(serial_numbers=None):
+        """Find all the currently connected Illuminate serial numbers.
+
+        Parameters
+        ----------
+        serial_numbers: list of str, or None
+            If provided, will only match the serial numbers that are contained
+            in the provided list.
+
+        Returns
+        -------
+        serial_numbers: list of serial numbers
+            List of connected serial numbers.
+
+        Note
+        ----
+        If a list of serial numbers is not provided, then this function may
+        match Teensy 3.1/3.2 microcontrollers that are connected to the
+        computer but that may not be associated with the Illuminate boards.
+
+        """
+        _, serial_numbers = zip(
+            *Illuminate._device_serial_number_pairs(
+                serial_numbers=serial_numbers)
+        )
+        return serial_numbers
+
+    @staticmethod
+    def _device_serial_number_pairs(serial_numbers=None):
+        com = comports()
+        return [
+            (c.device, c.serial_number)
+            for c in com
+            if ((c.vid, c.pid) in Illuminate.VID_PID_s and
+                (serial_numbers is None or
+                 c.serial_number in serial_numbers))
+        ]
 
     def __init__(self, *, port: str=None, reboot_on_start: bool=True,
                  baudrate: int=115200, timeout: float=0.500,
-                 open_device: bool=True, mac_address: str=None) -> None:
+                 open_device: bool=True, mac_address: str=None,
+                 serial_number: str=None) -> None:
         """Open the Illumination board.
 
         Parameters
@@ -104,30 +173,44 @@ class Illuminate:
             warn('Timeout too small, try providing at least 0.5 seconds.')
 
         if mac_address is not None:
-            port = self.find_by_mac_address(mac_address)
+            serial_number = self.serial_by_mac_address(mac_address)
+            from warnings import warn
+            warn(f'The parameter mac_address is deprecated and will be '
+                 f'removed in a future version. Use the parameter '
+                 f'serial_number instead. The serial number associated '
+                 f'with the device with mac_address="{mac_address}" is '
+                 f'"{serial_number}".', stacklevel=2)
+        if serial_number is not None:
+            port = self.find(serial_numbers=[serial_number])[0]
 
         self.reboot_on_start = reboot_on_start
+        # Explicitely provide None to the port so as to delay opening
+        # the device until the very end of the setup
         self.serial = Serial(port=None,
                              baudrate=baudrate, timeout=timeout)
+        # Make the buffer size really large since the LED positions,
+        # communicated as a JSON string take quite a few characters to send
+        self.serial.set_buffer_size(rx_size=50000)
         if port is not None:
             self.serial.port = port
         if open_device:
             self.open()
 
     @classmethod
-    def find_by_mac_address(cls, mac_address: str) -> str:
-        mac_address = mac_address.lower()
-        for port in cls.find():
-            try:
-                with cls(port=port) as dev:
-                    dev_mac_address = dev.mac_address.lower()
-                if dev_mac_address == mac_address:
-                    return port
-            except SerialException:
-                continue
+    def serial_by_mac_address(cls, mac_address: str) -> str:
+        serial_number = cls._known_mac_addresses.get(mac_address, None)
+        if serial_number is not None:
+            return serial_number
+        else:
+            raise RuntimeError(
+                f"mac_address {mac_address} is not known, use serial number. "
+                f"Contact info@ramonaoptics.com providing the mac_address and "
+                f"serial number combination.")
 
-        raise RuntimeError("Couldn't find any Illuminate board with "
-                           f"the MAC address {mac_address}")
+    @property
+    def device_name(self):
+        """The human readable name of the device."""
+        return self._device_name
 
     def _load_parameters(self) -> None:
         """Read the parameters from the illuminate board.
@@ -150,7 +233,10 @@ class Illuminate:
 
         # as dictionary
         # Units at this point are in mm
-        p = json.loads(self._ask_string('pledpos'))[
+        # This function faults sometimes, therefore, we assign the result
+        # of ask_string to a variable, making debugging a little easier.
+        s = self._ask_string('pledpos')
+        p = json.loads(s)[
             'led_position_list_cartesian']
         self.N_leds = len(p)
 
@@ -212,9 +298,9 @@ class Illuminate:
             self._load_parameters()
         except json.JSONDecodeError as e:
             self.close()
-            raise RuntimeError(
-                'Could not successfully open the Illuminate board. '
-                'Received JSONDecodeError "' + str(e) + '"')
+            e.args = (('Could not successfully open the Illuminate board.',) +
+                      e.args)
+            raise e
         # Set the brightness low so we can live
         self.brightness = 1
 
@@ -235,6 +321,7 @@ class Illuminate:
         """Force close the serial port."""
         if self.serial.isOpen():
             self.clear()
+            self.serial.flush()
             self.serial.close()
 
     def write(self, data) -> None:

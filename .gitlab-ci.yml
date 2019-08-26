@@ -75,7 +75,8 @@ deploy_linux:
 
 static_checking_linux:
   extends: .setup_linux
-  stage: test
+  # let this test run in parallel
+  stage: build
   script:
     - conda create --name owl_runner_pyilluminate --yes flake8 mypy
     - source activate owl_runner_pyilluminate

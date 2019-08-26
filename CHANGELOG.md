@@ -1,3 +1,10 @@
+## 0.4.0 (2019/08/26)
+
+ * Refactored how devices are identified. They are not identified by their
+   serial numbers instead of their MAC Address. This avoids port knocking and
+   ensures that openning devices is now faster especially when trying to
+   connect to multiple Illuminate devices connected to a single computer.
+
 ## 0.3.2 (2019/08/19)
 
  * Fixed up a typo that would cause an error to occur in `positions_as_xarray`.
