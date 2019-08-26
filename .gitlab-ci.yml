@@ -15,17 +15,11 @@
     - call git submodule update
     - conda.exe build purge
 
-build_windows_36:
+build_windows:
   extends: .setup_windows
   stage: build
   script:
     - conda.exe build . -m .ci_support/python3_6.yaml
-
-
-build_windows_37:
-  extends: .setup_windows
-  stage: build
-  script:
     - conda.exe build . -m .ci_support/python3_7.yaml
 
 deploy_windows:
@@ -60,16 +54,11 @@ deploy_windows:
     # https://github.com/ContinuumIO/anaconda-issues/issues/9190#issuecomment-384697849
     - /usr/bin/sudo -n yum install -y mesa-libGL
 
-build_linux_36:
+build_linux:
   extends: .setup_linux
   stage: build
   script:
     - conda build . -m .ci_support/python3_6.yaml
-
-build_linux_37:
-  extends: .setup_linux
-  stage: build
-  script:
     - conda build . -m .ci_support/python3_7.yaml
 
 deploy_linux:
