@@ -1,3 +1,9 @@
+## 0.4.1 (2019/09/01)
+
+ * BUGFIX: Setting the buffer size now only occurs on platforms that support
+   it. This bug was introduced in 0.4.0 and manifested itself as the inability
+   to open the device on linux
+
 ## 0.4.0 (2019/08/26)
 
  * Refactored how devices are identified. They are not identified by their

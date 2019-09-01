@@ -190,7 +190,9 @@ class Illuminate:
                              baudrate=baudrate, timeout=timeout)
         # Make the buffer size really large since the LED positions,
         # communicated as a JSON string take quite a few characters to send
-        self.serial.set_buffer_size(rx_size=50000)
+        if hasattr(self.serial, 'set_buffer_size'):
+            # this doesn't exist on all platforms
+            self.serial.set_buffer_size(rx_size=50000)
         if port is not None:
             self.serial.port = port
         if open_device:
