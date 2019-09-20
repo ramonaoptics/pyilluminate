@@ -1,3 +1,7 @@
+## 0.4.3 (2019/09/10)
+
+ * Package is no a noarch package.
+
 ## 0.4.2 (2019/09/19)
 
  * JSONDecodeError are alleviated in Windows making opening the LED board more
