@@ -5,7 +5,11 @@ from warnings import warn
 from typing import List, Union, Optional, Iterable, Tuple
 import collections
 from distutils.version import LooseVersion
-from dataclasses import dataclass
+
+try:
+    from dataclasses import dataclass
+except ModuleNotFoundError:
+    from .dataclasses import dataclass
 import xarray as xr
 
 import numpy as np
