@@ -9,7 +9,8 @@ from distutils.version import LooseVersion
 try:
     from dataclasses import dataclass
 except ModuleNotFoundError:
-    from .dataclasses import dataclass
+    from .dataclasses import dataclass  # type: ignore
+
 import xarray as xr
 
 import numpy as np
