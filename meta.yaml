@@ -28,10 +28,7 @@ requirements:
     - pyserial
     - xarray
     - numpy
-    # Maybe depend on this again once dataclasses is no longer a python 3.6 only
-    # package
-    # for now, we've vendored dataclasses
-    # - dataclasses  # [py==36]
+    - dataclasses
 
 about:
   home: www.ramonaoptics.com

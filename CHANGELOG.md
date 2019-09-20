@@ -1,4 +1,8 @@
-## 0.4.3 (2019/09/10)
+## 0.4.4 (2019/09/20)
+
+ * Package no longer vendors dataclasses
+
+## 0.4.3 (2019/09/20)
 
  * Package is no a noarch package.
 
