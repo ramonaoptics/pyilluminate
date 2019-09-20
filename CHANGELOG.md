@@ -1,3 +1,8 @@
+## 0.4.2 (2019/09/19)
+
+ * JSONDecodeError are alleviated in Windows making opening the LED board more
+   consistent.
+
 ## 0.4.1 (2019/09/01)
 
  * BUGFIX: Setting the buffer size now only occurs on platforms that support

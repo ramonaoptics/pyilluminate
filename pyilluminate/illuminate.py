@@ -219,7 +219,8 @@ class Illuminate:
 
         Function is called automatically when the device is opened.
         """
-        parameters = json.loads(self.parameters_json)
+        p_raw = self.parameters_json
+        parameters = json.loads(p_raw)
         self._device_name = parameters['device_name']
         self._part_number = parameters['part_number']
         self._serial_number = parameters['serial_number']
@@ -237,9 +238,22 @@ class Illuminate:
         # Units at this point are in mm
         # This function faults sometimes, therefore, we assign the result
         # of ask_string to a variable, making debugging a little easier.
-        s = self._ask_string('pledpos')
-        p = json.loads(s)[
-            'led_position_list_cartesian']
+        for _ in range(10):
+            try:
+                # Because the pledpos serial communication can be really large
+                # the amount of data might not fit in the buffer on Windows
+                # This can cause the JSON data to be malformed, causing a
+                # decode error below
+                s = self._ask_string('pledpos')
+                p = json.loads(s)[
+                    'led_position_list_cartesian']
+                break
+            except json.JSONDecodeError as e:
+                error = e
+                sleep(0.1)
+        else:
+            raise error
+
         self.N_leds = len(p)
 
         led_positions = xr.DataArray(
