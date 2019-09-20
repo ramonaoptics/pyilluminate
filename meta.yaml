@@ -13,9 +13,9 @@ source:
   path: .
 
 build:
-  number: 1
+  number: 0
   include_recipe: False
-  # noarch: python
+  noarch: python
   script:
     - "{{ PYTHON }} -m pip install . --no-deps --ignore-installed --no-cache-dir -vv"
 
@@ -28,7 +28,10 @@ requirements:
     - pyserial
     - xarray
     - numpy
-    - dataclasses  # [py==36]
+    # Maybe depend on this again once dataclasses is no longer a python 3.6 only
+    # package
+    # for now, we've vendored dataclasses
+    # - dataclasses  # [py==36]
 
 about:
   home: www.ramonaoptics.com
