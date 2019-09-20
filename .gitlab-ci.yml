@@ -15,25 +15,6 @@
     - call git submodule update
     - conda.exe build purge
 
-build_windows:
-  extends: .setup_windows
-  stage: build
-  script:
-    - conda.exe build . -m .ci_support/python3_6.yaml
-    - conda.exe build . -m .ci_support/python3_7.yaml
-
-deploy_windows:
-  # Only deploy if a new tag is created
-  extends: .setup_windows
-  only:
-    - tags
-  stage: deploy
-  script:
-    # upload both packages when they succeed.
-    # this requires the environment variable BINSTAR_TOKEN to exist
-    - upload_or_check_non_existence . ramonaoptics -m .ci_support/python3_6.yaml
-    - upload_or_check_non_existence . ramonaoptics -m .ci_support/python3_7.yaml
-
 .setup_linux:
   image: condaforge/linux-anvil-comp7
   tags:
@@ -58,8 +39,7 @@ build_linux:
   extends: .setup_linux
   stage: build
   script:
-    - conda build . -m .ci_support/python3_6.yaml
-    - conda build . -m .ci_support/python3_7.yaml
+    - conda build .
 
 deploy_linux:
   extends: .setup_linux
@@ -68,10 +48,8 @@ deploy_linux:
     - tags
   script:
     # tests were already run in the previous step, this just avoid the need for artifacts.
-    - conda build --no-test . -m .ci_support/python3_6.yaml
-    - conda build --no-test . -m .ci_support/python3_7.yaml
-    - upload_or_check_non_existence . ramonaoptics -m .ci_support/python3_6.yaml
-    - upload_or_check_non_existence . ramonaoptics -m .ci_support/python3_7.yaml
+    - conda build --no-test .
+    - upload_or_check_non_existence . ramonaoptics
 
 static_checking_linux:
   extends: .setup_linux
