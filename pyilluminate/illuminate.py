@@ -96,10 +96,11 @@ class Illuminate:
         computer but that may not be associated with the Illuminate boards.
 
         """
-        devices, _ = zip(
-            *Illuminate._device_serial_number_pairs(
-                serial_numbers=serial_numbers)
-        )
+        pairs = Illuminate._device_serial_number_pairs(
+            serial_numbers=serial_numbers)
+        if len(pairs) == 0:
+            return []
+        devices, _ = zip(*pairs)
         return devices
 
     @staticmethod
@@ -124,22 +125,26 @@ class Illuminate:
         computer but that may not be associated with the Illuminate boards.
 
         """
-        _, serial_numbers = zip(
-            *Illuminate._device_serial_number_pairs(
-                serial_numbers=serial_numbers)
-        )
-        return serial_numbers
+        pairs = Illuminate._device_serial_number_pairs(
+            serial_numbers=serial_numbers)
+        if len(pairs) == 0:
+            return []
+        _, serial_numbers = zip(*pairs)
+        devices, _ = zip(*pairs)
+        return devices
 
     @staticmethod
     def _device_serial_number_pairs(serial_numbers=None):
         com = comports()
-        return [
+        pairs = [
             (c.device, c.serial_number)
             for c in com
             if ((c.vid, c.pid) in Illuminate.VID_PID_s and
                 (serial_numbers is None or
                  c.serial_number in serial_numbers))
         ]
+
+        return pairs
 
     def __init__(self, *, port: str=None, reboot_on_start: bool=True,
                  baudrate: int=115200, timeout: float=0.500,
