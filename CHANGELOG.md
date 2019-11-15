@@ -1,3 +1,7 @@
+## 0.4.5 (2019/11/14)
+
+ * Not finding any devices raises a better error message.
+
 ## 0.4.4 (2019/09/20)
 
  * Package no longer vendors dataclasses
