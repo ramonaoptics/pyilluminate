@@ -292,7 +292,10 @@ class Illuminate:
         """Open the serial port. Only useful if you closed it."""
         if not self.serial.isOpen():
             if self.serial.port is None:
-                self.serial.port = self.find()[0]
+                ports_found = self.find()
+                if len(ports_found) == 0:
+                    raise RuntimeError("So Illuminate devices found")
+                self.serial.port = ports_found[0]
             try:
                 self.serial.open()
             except SerialException:
