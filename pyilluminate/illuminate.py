@@ -130,8 +130,7 @@ class Illuminate:
         if len(pairs) == 0:
             return []
         _, serial_numbers = zip(*pairs)
-        devices, _ = zip(*pairs)
-        return devices
+        return serial_numbers
 
     @staticmethod
     def _device_serial_number_pairs(serial_numbers=None):
