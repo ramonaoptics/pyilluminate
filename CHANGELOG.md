@@ -1,3 +1,7 @@
+## 0.4.6 (2019/11/18)
+
+ * list_serial_numbers returns serial numbers again
+
 ## 0.4.5 (2019/11/14)
 
  * Not finding any devices raises a better error message.
