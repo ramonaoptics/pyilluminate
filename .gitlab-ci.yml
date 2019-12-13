@@ -1,4 +1,5 @@
 .setup_windows:
+  interruptible: true
   tags:
     - windows
   before_script:
@@ -16,6 +17,7 @@
     - conda.exe build purge
 
 .setup_linux:
+  interruptible: true
   image: condaforge/linux-anvil-comp7
   tags:
     - linux
@@ -37,12 +39,14 @@
 
 build_linux:
   extends: .setup_linux
+  interruptible: true
   stage: build
   script:
     - conda build .
 
 deploy_linux:
   extends: .setup_linux
+  interruptible: true
   stage: deploy
   only:
     - tags
@@ -53,6 +57,7 @@ deploy_linux:
 
 static_checking_linux:
   extends: .setup_linux
+  interruptible: true
   # let this test run in parallel
   stage: build
   script:
