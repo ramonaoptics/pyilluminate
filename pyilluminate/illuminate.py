@@ -33,7 +33,11 @@ known_devices = [
     },
 ]
 
-known_serial_numbers = [d['serial_number'] for d in known_devices]
+known_serial_numbers = [
+    d['serial_number']
+    for d in known_devices
+    if d['serial_number']  # empty strings and NULL are Falsy
+]
 known_mac_addresses = {
     d['mac_address']: d['serial_number']
     for d in known_devices
@@ -174,6 +178,7 @@ class Illuminate:
             `mac_address` takes precedence over `port`
 
         """
+        self.serial = None
         if timeout < 0.4:
             warn('Timeout too small, try providing at least 0.5 seconds.')
 
@@ -186,7 +191,13 @@ class Illuminate:
                  f'with the device with mac_address="{mac_address}" is '
                  f'"{serial_number}".', stacklevel=2)
         if serial_number is not None:
-            port = self.find(serial_numbers=[serial_number])[0]
+            available_ports = self._device_serial_number_pairs(
+                serial_numbers=[serial_number])
+            if len(available_ports) == 0:
+                raise RuntimeError(
+                    f"Could not find serial number: {serial_number}")
+            port, found_serial_number = available_ports[0]
+            self.serial_number = found_serial_number
 
         self.reboot_on_start = reboot_on_start
         # Explicitely provide None to the port so as to delay opening
@@ -289,12 +300,16 @@ class Illuminate:
 
     def open(self) -> None:
         """Open the serial port. Only useful if you closed it."""
+        if self.serial is None:
+            raise RuntimeError("__init__ must be successfully called first")
         if not self.serial.isOpen():
             if self.serial.port is None:
-                ports_found = self.find()
-                if len(ports_found) == 0:
+                available_ports = self._device_serial_number_pairs()
+                if len(available_ports) == 0:
                     raise RuntimeError("So Illuminate devices found")
-                self.serial.port = ports_found[0]
+                port, serial_number = available_ports[0]
+                self.serial.port = port
+                self.serial_number = serial_number
             try:
                 self.serial.open()
             except SerialException:
@@ -343,7 +358,7 @@ class Illuminate:
 
     def close(self) -> None:
         """Force close the serial port."""
-        if self.serial.isOpen():
+        if self.serial is not None and self.serial.isOpen():
             self.clear()
             self.serial.flush()
             self.serial.close()
@@ -353,6 +368,8 @@ class Illuminate:
 
         If it is a string, encode it as 'utf-8'.
         """
+        if self.serial is None:
+            raise RuntimeError("__init__ must be successfully called first")
         if isinstance(data, str):
             data = (data + '\n').encode('utf-8')
         self.serial.write(data)
@@ -366,10 +383,14 @@ class Illuminate:
             bytearray of data read.
 
         """
+        if self.serial is None:
+            raise RuntimeError("__init__ must be successfully called first")
         return self.serial.read(size)
 
     def readline(self) -> str:
         """Call underlying readline and decode as utf-8."""
+        if self.serial is None:
+            raise RuntimeError("__init__ must be successfully called first")
         b = self.serial.readline()
         return b.decode('utf-8')
 
@@ -979,6 +1000,8 @@ class Illuminate:
         some UV leds on my board? So this demo's default time is set to 20
         instead.
         """
+        if self.serial is None:
+            raise RuntimeError("__init__ must be successfully called first")
         self.write('demo')
         previous_timeout = self.serial.timeout
         self.serial.timeout = 6  # Seems to blink for around 5 seconds
@@ -998,6 +1021,8 @@ class Illuminate:
         self._finish_demo(time)
 
     def _finish_demo(self, time: float) -> None:
+        if self.serial is None:
+            raise RuntimeError("__init__ must be successfully called first")
         sleep(self.serial.timeout)
 
         # If something is waiting so soon, then it is probably an error

@@ -1,3 +1,7 @@
+## 0.4.7 (2019/12/12)
+
+ * Better error messages when a device isn't found.
+
 ## 0.4.6 (2019/11/18)
 
  * list_serial_numbers returns serial numbers again
