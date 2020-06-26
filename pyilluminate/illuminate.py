@@ -332,6 +332,7 @@ class Illuminate:
                 "reconnecting the cable.")
 
         if self.reboot_on_start:
+            # This reboot procedure will clear the device
             self.reboot()
         try:
             self._load_parameters()
@@ -342,6 +343,10 @@ class Illuminate:
             raise e
         # Set the brightness low so we can live
         self.brightness = 1
+        # Set it to clear between commands.
+        # This may have changed due to the user having previously
+        # Opened the Illuminate board, so we set it to a safe default
+        self.autoclear = True
 
         if LooseVersion(self.version) > '1.13':
             # ALl boards that I have in my possension have been updated.
@@ -511,41 +516,31 @@ class Illuminate:
         # read it as a string
         return self._ask_string('version')
 
-    def autoclear(self, value: bool=None) -> bool:
+    @property
+    def autoclear(self) -> bool:
         """Toggle clearing of array between led updates.
-
-        Can call with or without options.
-
-        Parameters
-        ----------
-        value: bool
-            If set to `True`, the LED array will clear before and after each
-            new command. If set to `False`, False: LED array will NOT clear
-            before and after each new command.
 
         Returns
         -------
         value: bool
-            The value of autoclear after the command.
+            The current setting of autoclear
         """
-        raise NotImplementedError('Not yet implemented')
-        r"""
-        if value is None:
-            s = self._ask_string('ac')
+        # The autoclear command from the teensy toggles the
+        # autoclear bit, so we must remember the state of autoclear
+        # in python, and just return the cached value
+        return self._autoclear
+
+    @autoclear.setter
+    def autoclear(self, value: bool=None) -> None:
+        # The autoclear command from the teensy toggles the
+        # autoclear bit, so we must remember the state of autoclear
+        # in python, and just return the cached value
+        if value:
+            self._ask_string('ac.1')
+            self._autoclear = True
         else:
-            if value:
-                s = self._ask_string('ac.1')
-            else:
-                s = self._ask_string('ac.0')
-        result = re.search(r'\d', s)
-        if result is None:
-            return False
-        result = result.group(0)
-        if int(result.string):
-            return True
-        else:
-            return False
-        """
+            self._ask_string('ac.0')
+            self._autoclear = False
 
     @property
     def NA(self) -> float:
@@ -632,8 +627,6 @@ class Illuminate:
             first converted to 1D numpy arrays, then to a list.
 
         """
-        self.clear()
-
         if isinstance(leds, np.ndarray):
             # As 1D
             leds = leds.reshape(-1).tolist()
@@ -661,8 +654,6 @@ class Illuminate:
 
     def fill_array(self) -> None:
         """Fill the LED array with default color."""
-
-        self.clear()
         self.ask('ff')
         self._led = list(range(self._led_count))
 
@@ -768,7 +759,7 @@ class Illuminate:
 
     @sequence.setter
     def sequence(self, LED_sequence: List[int]) -> None:
-        self.ask('ssv.' + '.'.join([str(l) for l in LED_sequence]))
+        self.ask('ssv.' + '.'.join([str(led) for led in LED_sequence]))
         self._sequence = LED_sequence
 
     def run_sequence(self, delay: float, trigger_modes: List[float]) -> None:

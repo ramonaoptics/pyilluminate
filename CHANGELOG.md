@@ -1,3 +1,8 @@
+## 0.5.0 (2020/05/15)
+
+ * Autoclear enable/disable functionality can be used to draw LEDs with
+   differnt colors.
+
 ## 0.4.7 (2019/12/12)
 
  * Better error messages when a device isn't found.
