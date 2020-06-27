@@ -54,6 +54,8 @@ class LEDColor:
 
     def __init__(self, *, brightness: int=None,
                  red: int=0, green: int=0, blue: int=0):
+        warn("The LEDColor Class has been deprecated. "
+             "Please use a standard tuple of 3 or List of 3 elements.")
         if brightness is not None:
             red = brightness
             green = brightness
@@ -184,7 +186,6 @@ class Illuminate:
 
         if mac_address is not None:
             serial_number = self.serial_by_mac_address(mac_address)
-            from warnings import warn
             warn(f'The parameter mac_address is deprecated and will be '
                  f'removed in a future version. Use the parameter '
                  f'serial_number instead. The serial number associated '
@@ -554,31 +555,47 @@ class Illuminate:
 
     @property
     def brightness(self) -> int:
-        if (self._color.red == self._color.blue and
-                self._color.red == self._color.green):
-            return self._color.red
+        if (self._color[0] == self._color[1] and
+                self._color[0] == self._color[2]):
+            return self._color[0]
         else:
             raise ValueError('The RGB values are not equal. To access their '
                              'value, use the `color` property instead.')
 
     @brightness.setter
     def brightness(self, b: int):
-        self.color = LEDColor(brightness=b)
+        self.color = (b,) * 3
 
     @property
-    def color(self) -> LEDColor:
-        """LED array color."""
+    def color(self) -> Tuple[int, ...]:
+        """LED array color.
+
+        Returns a tuple for the ``(red, green, blue)`` value of the LEDs.
+
+        Returns
+        =======
+        red
+            Integer value for the brightness of the red pixel.
+        green
+            Integer value for the brightness of the green pixel.
+        blue
+            Integer value for the blue pixels.
+        """
         return self._color
 
     @color.setter
-    def color(self, c: Union[LEDColor, int, Tuple[int, int, int], List[int]]):
-        # sc, [rgbVal] - -or-- sc.[rVal].[gVal].[bVal]
-        if isinstance(c, (list, tuple)):
-            c = LEDColor(red=c[0], green=c[1], blue=c[2])
-        elif not isinstance(c, LEDColor):
-            c = LEDColor(brightness=c)
+    def color(self, c: Union[int, Iterable[int]]):
+        if isinstance(c, LEDColor):
+            c = (c.red, c.green, c.blue)
+        elif not isinstance(c, collections.abc.Iterable):
+            # Make it a 3 tuple
+            c = (c,) * 3
 
-        self.ask(f'sc.{c.red}.{c.green}.{c.blue}')
+        # Downcast to int for safety
+        c = tuple(int(i) for i in c)
+
+        self.ask(f'sc.{c[0]}.{c[1]}.{c[2]}')
+        # Cache the color for future use
         self._color = c
 
     @property
@@ -611,7 +628,7 @@ class Illuminate:
         return self._led
 
     @led.setter
-    def led(self, led: Union[int, List[int]]) -> None:
+    def led(self, led: Union[int, Iterable[int]]) -> None:
         self.turn_on_led(led)
 
     def turn_on_led(self, leds: Union[int, Iterable[int]]) -> None:
@@ -635,7 +652,7 @@ class Illuminate:
             return None
 
         # make leds a list
-        if isinstance(leds, collections.Iterable):
+        if isinstance(leds, collections.abc.Iterable):
             leds = list(leds)
         else:
             # Make a singleton a list
@@ -678,7 +695,7 @@ class Illuminate:
     def half_circle_color(self, red: int, green: int, blue: int) -> None:
         """Illuminate color DPC pattern."""
         # TODO: should this be a property?
-        self.ask('cdpc.' + str(LEDColor(red=red, green=green, blue=blue)))
+        self.ask(f'cdpc.{red}.{green}.{blue}')
 
     def annulus(self, minNA: float, maxNA: float) -> None:
         """Display annulus pattern set by min/max NA."""
@@ -692,7 +709,7 @@ class Illuminate:
 
     def draw_quadrant(self, red: int, green: int, blue: int) -> None:
         """Draws single quadrant."""
-        self.ask('dq.' + str(LEDColor(red=red, green=green, blue=blue)))
+        self.ask(f'dq.{red}.{green}.{blue}')
 
     def illuminate_uv(self, number: int) -> None:
         """Illuminate UV LED."""
