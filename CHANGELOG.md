@@ -1,7 +1,8 @@
-## 0.5.0 (2020/05/15)
+## 0.5.0 (2020/06/27)
 
  * Autoclear enable/disable functionality can be used to draw LEDs with
-   differnt colors.
+   different colors.
+ * Deprecate the use of the `LEDColor` class.
 
 ## 0.4.7 (2019/12/12)
 
