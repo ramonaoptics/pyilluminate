@@ -1,9 +1,10 @@
-.ropeproject
+\.tox
+\.ropeproject
 *.egg-info
 build
 dist
 Pipfile.lock
 *.pyc
-.mypy_cache
+\.mypy_cache
 
-\.idea/
+\.idea
