@@ -5,7 +5,7 @@ import versioneer
 setup(
     name='pyIlluminate',
     version=versioneer.get_version(),
-    url='https://bitbucket.org/opticalwavefrontlabs/pyilluminate',
+    url='https://github.com/ramonaoptics/pyilluminate',
     author='Ramona Optics, Inc.',
     author_email='info@ramonaoptics.com',
     license='BSD',
