@@ -3,6 +3,8 @@ from time import sleep
 import numpy as np
 import pytest
 
+pytestmark = pytest.mark.device
+
 
 @pytest.fixture(scope='module')
 def light():
