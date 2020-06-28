@@ -357,7 +357,7 @@ class Illuminate:
             # max
             # In fact more normalization is done, but we patch it away
             # https://github.com/zfphil/illuminate/pull/18
-            self.ask('sb.255')
+            self.ask('sb.max')
 
     def __del__(self):
         self.close()
