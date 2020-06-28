@@ -8,8 +8,11 @@ setup(name='pyIlluminate',
       author='Ramona Optics, Inc.',
       author_email='info@ramonaoptics.com',
       license='BSD',
-      install_requires=['pyserial',
-                        'xarray'],
+      install_requires=[
+          'pyserial',
+          'xarray',
+          'dataclasses'
+      ],
       packages=find_packages(),
       cmdclass=versioneer.get_cmdclass(),
       )
