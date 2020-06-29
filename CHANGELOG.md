@@ -1,3 +1,11 @@
+## 0.5.3 (2020/06/29)
+
+ * Initial support for 16 bit precision drivers.
+
+## 0.5.2 (2020/06/28)
+
+ * First release on GitHub.
+
 ## 0.5.1 (2020/06/27)
 
  * Initialize all LED arrays with max brightness.
