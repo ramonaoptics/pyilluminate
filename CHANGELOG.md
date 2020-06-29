@@ -1,4 +1,4 @@
-## 0.5.4 (2020/06/29)
+## 0.5.4 (2020/06/30)
 
  * Distribution name changed from pyIlluminate to pyilluminate.
 
