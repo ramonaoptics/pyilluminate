@@ -1,3 +1,7 @@
+## 0.5.4 (2020/06/29)
+
+ * Distribution name changed from pyIlluminate to pyilluminate.
+
 ## 0.5.3 (2020/06/29)
 
  * Initial support for 16 bit precision drivers.
