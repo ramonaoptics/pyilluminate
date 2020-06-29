@@ -388,7 +388,10 @@ class Illuminate:
                 )
 
         # Set the brightness low so we can live
-        self.brightness = self.color_minimum_increment
+        if self._precision == 'float':
+            self.brightness = self.color_minimum_increment
+        else:
+            self.brightness = 1
 
     def __del__(self):
         self.close()
