@@ -154,7 +154,8 @@ class Illuminate:
     def __init__(self, *, port: str=None, reboot_on_start: bool=True,
                  baudrate: int=115200, timeout: float=0.500,
                  open_device: bool=True, mac_address: str=None,
-                 serial_number: str=None) -> None:
+                 serial_number: str=None,
+                 precision=8) -> None:
         """Open the Illumination board.
 
         Parameters
@@ -183,6 +184,8 @@ class Illuminate:
         self.serial = None
         if timeout < 0.4:
             warn('Timeout too small, try providing at least 0.5 seconds.')
+
+        self._precision = precision
 
         if mac_address is not None:
             serial_number = self.serial_by_mac_address(mac_address)
@@ -224,7 +227,8 @@ class Illuminate:
             raise RuntimeError(
                 f"mac_address {mac_address} is not known, use serial number. "
                 f"Contact info@ramonaoptics.com providing the mac_address and "
-                f"serial number combination.")
+                f"serial number combination."
+            )
 
     @property
     def device_name(self):
@@ -237,7 +241,11 @@ class Illuminate:
         Function is called automatically when the device is opened.
         """
         p_raw = self.parameters_json
-        parameters = json.loads(p_raw)
+        parameters = {
+            'interface_bit_depth': 8,
+        }
+        loaded_parameters = json.loads(p_raw)
+        parameters.update(loaded_parameters)
         self._device_name = parameters['device_name']
         self._part_number = parameters['part_number']
         self._serial_number = parameters['serial_number']
@@ -246,6 +254,8 @@ class Illuminate:
         # self.color_channels
         self._sequence_bit_depth = parameters['bit_depth']
         self._mac_address = parameters['mac_address']
+
+        self._interface_bit_depth = parameters['interface_bit_depth']
 
         # There are a ton of default properties that are not easy to read.
         # Maybe I can get Zack to implement reading them, but I'm not sure if
@@ -358,6 +368,26 @@ class Illuminate:
             # In fact more normalization is done, but we patch it away
             # https://github.com/zfphil/illuminate/pull/18
             self.ask('sb.max')
+
+        if self._bit_depth is None:
+            self._bit_depth = self._interface_bit_depth
+
+        if self._bit_depth == 'float':
+            self._scale_factor = ((1 << self._interface_bit_depth) - 1)
+        else:
+            if self._bit_depth > self._interface_bit_depth:
+                self.close()
+                raise ValueError(
+                    f"Selected bit depth {self._bit_depth} is not supported "
+                    "by this LED board. "
+                    "This board only supports bit depths up to "
+                    f"{self._interface_bit_depth} bits."
+                    "Please contact support for more assistance.")
+            else:
+                self._scale_factor = (
+                    ((1 << self._interface_bit_depth) - 1) /
+                    ((1 << self._bit_depth) - 1)
+                )
 
     def __del__(self):
         self.close()
@@ -591,12 +621,24 @@ class Illuminate:
             # Make it a 3 tuple
             c = (c,) * 3
 
+        # Remember the user color, as the user provided it
+        user_color = c
         # Downcast to int for safety
-        c = tuple(int(i) for i in c)
+        c = tuple(int(i * self._scale_factor) for i in c)
 
         self.ask(f'sc.{c[0]}.{c[1]}.{c[2]}')
         # Cache the color for future use
-        self._color = c
+        self._color = user_color
+
+    @property
+    def color_maximum_value(self):
+        """Maximum color intensity that can provided to the LED board."""
+        return ((1 << self._interface_bit_depth) - 1) / self._scale_factor
+
+    @property
+    def color_minimum_increment(self):
+        """Minium intensity increment that can be provided to the LED board."""
+        return self._scale_factor
 
     @property
     def array_distance(self) -> float:
