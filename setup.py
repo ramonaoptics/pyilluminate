@@ -3,7 +3,7 @@ import versioneer
 
 
 setup(
-    name='pyIlluminate',
+    name='pyilluminate',
     version=versioneer.get_version(),
     url='https://github.com/ramonaoptics/pyilluminate',
     author='Ramona Optics, Inc.',
