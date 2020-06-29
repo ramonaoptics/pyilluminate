@@ -352,8 +352,6 @@ class Illuminate:
             e.args = (('Could not successfully open the Illuminate board.',) +
                       e.args)
             raise e
-        # Set the brightness low so we can live
-        self.brightness = 1
         # Set it to clear between commands.
         # This may have changed due to the user having previously
         # Opened the Illuminate board, so we set it to a safe default
@@ -369,16 +367,16 @@ class Illuminate:
             # https://github.com/zfphil/illuminate/pull/18
             self.ask('sb.max')
 
-        if self._bit_depth is None:
-            self._bit_depth = self._interface_bit_depth
+        if self._precision is None:
+            self._precision = self._interface_bit_depth
 
-        if self._bit_depth == 'float':
+        if self._precision == 'float':
             self._scale_factor = ((1 << self._interface_bit_depth) - 1)
         else:
-            if self._bit_depth > self._interface_bit_depth:
+            if self._precision > self._interface_bit_depth:
                 self.close()
                 raise ValueError(
-                    f"Selected bit depth {self._bit_depth} is not supported "
+                    f"Selected precision {self._precision} is not supported "
                     "by this LED board. "
                     "This board only supports bit depths up to "
                     f"{self._interface_bit_depth} bits."
@@ -386,8 +384,11 @@ class Illuminate:
             else:
                 self._scale_factor = (
                     ((1 << self._interface_bit_depth) - 1) /
-                    ((1 << self._bit_depth) - 1)
+                    ((1 << self._precision) - 1)
                 )
+
+        # Set the brightness low so we can live
+        self.brightness = self.color_minimum_increment
 
     def __del__(self):
         self.close()
@@ -638,7 +639,10 @@ class Illuminate:
     @property
     def color_minimum_increment(self):
         """Minium intensity increment that can be provided to the LED board."""
-        return self._scale_factor
+        if self._precision == 'float':
+            return 1 / ((1 << self._interface_bit_depth) - 1)
+        else:
+            return 1 / self._scale_factor
 
     @property
     def array_distance(self) -> float:
