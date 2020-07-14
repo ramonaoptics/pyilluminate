@@ -29,6 +29,7 @@ requirements:
     - xarray
     - numpy
     - dataclasses
+    - filelock
 
 about:
   home: www.ramonaoptics.com
