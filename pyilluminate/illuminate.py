@@ -12,7 +12,8 @@ import xarray as xr
 import numpy as np
 from serial import Serial, SerialException
 from serial.tools.list_ports import comports
-
+from filelock import Timeout, FileLock
+import tempfile
 
 """
 Trigger notes from Zack's code.
@@ -174,13 +175,11 @@ class Illuminate:
         open_device: bool
             If True, the __init__ function call will open the device. If false,
             a manual call to ``open`` needs to be issued.
-        mac_address: string
-            Port numbers may change from computer to computer.
-            If `mac_address` is provided, then ``find_by_mac_address`` is
-            called to find the port associated with the mac address.
-            `mac_address` takes precedence over `port`
-
+        serial_number:
+            This is the serial number of the teensy USB controller. Only
+            one serial_number will be addressed at a time.
         """
+
         self.serial = None
         if timeout < 0.4:
             warn('Timeout too small, try providing at least 0.5 seconds.')
@@ -194,6 +193,7 @@ class Illuminate:
                  f'serial_number instead. The serial number associated '
                  f'with the device with mac_address="{mac_address}" is '
                  f'"{serial_number}".', stacklevel=2)
+
         if serial_number is not None:
             available_ports = self._device_serial_number_pairs(
                 serial_numbers=[serial_number])
@@ -314,16 +314,33 @@ class Illuminate:
         if self.serial is None:
             raise RuntimeError("__init__ must be successfully called first")
         if not self.serial.isOpen():
+
             if self.serial.port is None:
                 available_ports = self._device_serial_number_pairs()
                 if len(available_ports) == 0:
-                    raise RuntimeError("So Illuminate devices found")
+                    raise RuntimeError("No Illuminate devices found")
                 port, serial_number = available_ports[0]
                 self.serial.port = port
                 self.serial_number = serial_number
+
+            # lock will only be called if the device is closed
+            unique_pyilluminate_locktxt = (
+                tempfile.gettempdir() +
+                f"/pyilluminate_{self.serial_number}.lock")
+            self.lock = FileLock(unique_pyilluminate_locktxt)
+
+            try:
+                self.lock.acquire(timeout=0.001)
+            except Timeout:
+                raise RuntimeError(
+                    "This pyilluminate board has been opened already. "
+                    "Establish a new connection by closing this board."
+                )
+
             try:
                 self.serial.open()
             except SerialException:
+                self.lock.release()
                 raise SerialException(
                     "Must close previous Illuminate connection before "
                     "establishing a new one. If there is a previous instance "
@@ -402,6 +419,7 @@ class Illuminate:
             self.clear()
             self.serial.flush()
             self.serial.close()
+            self.lock.release()
 
     def write(self, data) -> None:
         """Write data to the port.
