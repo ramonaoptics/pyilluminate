@@ -1,3 +1,8 @@
+## 0.5.5 (2020/07/06)
+
+ * Better support for very long lists of LEDs (best with firmware update).
+ * System now raises an error upon using the common typo `Illuminate.leds = ...`
+
 ## 0.5.4 (2020/06/30)
 
  * Distribution name changed from pyIlluminate to pyilluminate.

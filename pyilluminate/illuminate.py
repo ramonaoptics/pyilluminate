@@ -45,6 +45,11 @@ known_mac_addresses = {
 }
 
 
+# Typically defined in commandrouting.h
+# Increasing this causes more errors in the firmware
+MAX_ARGUMENT_CHAR_COUNT = 1500
+
+
 @dataclass
 class LEDColor:
     """Generic class for representing colors."""
@@ -179,7 +184,9 @@ class Illuminate:
             This is the serial number of the teensy USB controller. Only
             one serial_number will be addressed at a time.
         """
-
+        self._color = (0., 0., 0.)
+        self._mac_address = ""
+        self._interface_bit_depth = 8
         self.serial = None
         if timeout < 0.4:
             warn('Timeout too small, try providing at least 0.5 seconds.')
@@ -243,19 +250,21 @@ class Illuminate:
         p_raw = self.parameters_json
         parameters = {
             'interface_bit_depth': 8,
+            'mac_address': '',
         }
         loaded_parameters = json.loads(p_raw)
         parameters.update(loaded_parameters)
         self._device_name = parameters['device_name']
         self._part_number = parameters['part_number']
         self._serial_number = parameters['serial_number']
-        self._led_count = parameters['led_count']
+        self._led_count = int(parameters['led_count'])  # type: ignore
         # self._center_wavelength
         # self.color_channels
         self._sequence_bit_depth = parameters['bit_depth']
-        self._mac_address = parameters['mac_address']
+        self._mac_address = str(parameters['mac_address'])  # type: ignore
 
-        self._interface_bit_depth = parameters['interface_bit_depth']
+        self._interface_bit_depth = int(  # type: ignore
+            parameters['interface_bit_depth'])  # type: ignore
 
         # There are a ton of default properties that are not easy to read.
         # Maybe I can get Zack to implement reading them, but I'm not sure if
@@ -369,10 +378,18 @@ class Illuminate:
             e.args = (('Could not successfully open the Illuminate board.',) +
                       e.args)
             raise e
+
+        # Cache the help string
+        # Simply print the raw information the way Zack has it formatted.
+        self._help = self._ask_string('?', raw=True)
+
+        self._has_autoupdate = 'au / autoUpdate' in self._help
+
         # Set it to clear between commands.
         # This may have changed due to the user having previously
         # Opened the Illuminate board, so we set it to a safe default
         self.autoclear = True
+        self.autoupdate = True
 
         if LooseVersion(self.version) > '1.13':
             # ALl boards that I have in my possension have been updated.
@@ -547,9 +564,8 @@ class Illuminate:
 
     @property
     def help(self) -> str:
-        """Display help information."""
-        # Simply print the raw information the way Zack has it formatted.
-        return self._ask_string('?', raw=True)
+        """Display help information from the illuminate board."""
+        return self._help
 
     @property
     def about(self) -> str:
@@ -596,6 +612,38 @@ class Illuminate:
             self._autoclear = False
 
     @property
+    def autoupdate(self) -> bool:
+        """Toggle updating of array between led commands.
+
+        Returns
+        -------
+        value: bool
+            The current setting of autoupdate
+        """
+        # The autoupdate command from the teensy toggles the
+        # autoupdate bit, so we must remember the state of autoupdate
+        # in python, and just return the cached value
+        return self._autoupdate
+
+    @autoupdate.setter
+    def autoupdate(self, value: bool=None) -> None:
+        # The autoupdate command from the teensy toggles the
+        # autoupdate bit, so we must remember the state of autoupdate
+        # in python, and just return the cached value
+        if value:
+            if self._has_autoupdate:
+                self._ask_string('au.1')
+            self._autoupdate = True
+        else:
+            if not self._has_autoupdate:
+                # Only raise an error when autoUpdate is being set to false
+                raise ValueError(
+                    "This version of the LED Driver doesn't support "
+                    "autoUpdate. Contact support for more information.")
+            self._ask_string('au.0')
+            self._autoupdate = False
+
+    @property
     def NA(self) -> float:
         """Numerical aperture for bf / df / dpc / cdpc patterns."""
         return self._NA
@@ -606,20 +654,21 @@ class Illuminate:
         self._NA = round(value, 2)
 
     @property
-    def brightness(self) -> int:
-        if (self._color[0] == self._color[1] and
-                self._color[0] == self._color[2]):
-            return self._color[0]
+    def brightness(self) -> float:
+        color = self.color
+        if ((color[0] == color[1]) and
+                (color[0] == color[2])):
+            return color[0]
         else:
             raise ValueError('The RGB values are not equal. To access their '
                              'value, use the `color` property instead.')
 
     @brightness.setter
-    def brightness(self, b: int):
+    def brightness(self, b: float):
         self.color = (b,) * 3
 
     @property
-    def color(self) -> Tuple[int, ...]:
+    def color(self) -> Tuple[float, ...]:
         """LED array color.
 
         Returns a tuple for the ``(red, green, blue)`` value of the LEDs.
@@ -636,21 +685,22 @@ class Illuminate:
         return self._color
 
     @color.setter
-    def color(self, c: Union[int, Iterable[int]]):
+    def color(self, c: Union[float, Iterable[float]]):
         if isinstance(c, LEDColor):
-            c = (c.red, c.green, c.blue)
+            c = (float(c.red), float(c.green), float(c.blue))
         elif not isinstance(c, collections.abc.Iterable):
             # Make it a 3 tuple
             c = (c,) * 3
 
         # Remember the user color, as the user provided it
-        user_color = c
+        user_color = tuple(float(i) for i in c)
         # Downcast to int for safety
         c = tuple(int(i * self._scale_factor) for i in c)
 
         self.ask(f'sc.{c[0]}.{c[1]}.{c[2]}')
         # Cache the color for future use
-        self._color = user_color
+        self._color = user_color  # type: ignore
+        # man, mypy is annoying.... i can't get typing for this one to work
 
     @property
     def color_maximum_value(self):
@@ -698,6 +748,16 @@ class Illuminate:
     def led(self, led: Union[int, Iterable[int]]) -> None:
         self.turn_on_led(led)
 
+    @property
+    def leds(self) -> None:
+        raise AttributeError(
+            "The ``leds`` attribute doesn't exist. Did you mean ``led``")
+
+    @leds.setter
+    def leds(self, value) -> None:
+        raise AttributeError(
+            "The ``leds`` attribute doesn't exist. Did you mean ``led``")
+
     def turn_on_led(self, leds: Union[int, Iterable[int]]) -> None:
         """Turn on a single LED(or multiple LEDs in an iterable).
 
@@ -724,17 +784,51 @@ class Illuminate:
         else:
             # Make a singleton a list
             leds = [leds]
-        cmd = '.'.join((str(led) for led in leds))
+
+        cmd = 'l.' + '.'.join((str(led) for led in leds))
         # SYNTAX:
         # l.[led  # ].[led #], ...
         # This will raise an error on bad syntax
-        self.ask('l.' + cmd)
+        if len(cmd) < MAX_ARGUMENT_CHAR_COUNT:
+            self.ask(cmd)
+        else:
+            # Need to breakup the command
+            chars_per_led = 1 + len(str(max(leds)))
+            max_leds_per_command = (
+                MAX_ARGUMENT_CHAR_COUNT - 2) // chars_per_led
+            command_chunks = (
+                len(leds) + max_leds_per_command - 1) // max_leds_per_command
+
+            old_autoclear = self.autoclear
+            old_autoupdate = self.autoupdate
+            self.autoclear = False
+            # if autoupdate isn't found, then gracefully set the LEDs
+            # sequentially, even if it blinks for the user
+            if self._has_autoupdate:
+                self.autoupdate = False
+            for i in range(command_chunks):
+                these_leds = leds[
+                    i * max_leds_per_command:(i + 1) * max_leds_per_command]
+                cmd = 'l.' + '.'.join(str(led) for led in these_leds)
+                self.ask(cmd)
+            self.autoclear = old_autoclear
+            self.autoupdate = old_autoupdate
+            if self._has_autoupdate and old_autoupdate:
+                self.update()
         self._led = leds
 
     def clear(self) -> None:
         """Clear the LED array."""
         self.ask('x')
         self._led = []
+
+    def update(self) -> None:
+        """Update the LED array."""
+        if not self._has_autoupdate:
+            raise NotImplementedError(
+                "This command requires an updated version of the firmware. "
+                "Contact support for help.")
+        self.ask('u')
 
     def fill_array(self) -> None:
         """Fill the LED array with default color."""
