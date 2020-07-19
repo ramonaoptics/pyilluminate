@@ -1,3 +1,7 @@
+## 0.5.6 (TBD)
+
+ * Bugfix: LED boards can be open by specifying ``port`` parameter again.
+
 ## 0.5.5 (2020/07/06)
 
  * Better support for very long lists of LEDs (best with firmware update).
