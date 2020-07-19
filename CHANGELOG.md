@@ -1,3 +1,7 @@
+## 0.5.7 (2020/07/19)
+
+ * Multiple users can attempt to use the pyilluminate boards at the same time.
+
 ## 0.5.6 (2020/07/19)
 
  * Bugfix: LED boards can be open by specifying ``port`` parameter again.
@@ -7,6 +11,8 @@
 
  * Better support for very long lists of LEDs (best with firmware update).
  * System now raises an error upon using the common typo `Illuminate.leds = ...`
+ * Locks are used to avoid multiple applications from attempting to control the
+   Illuminate board at the same time.
 
 ## 0.5.4 (2020/06/30)
 
