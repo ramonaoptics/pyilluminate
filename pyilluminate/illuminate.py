@@ -540,7 +540,8 @@ class Illuminate:
         # lock will only be called if the device is closed
         # (when isOpen is called).
         return MultiUserFileLock(unique_pyilluminate_locktxt,
-                                 group=group, chmod=chmod)
+                                 group=group, chmod=chmod,
+                                 timeout=0.001)
 
     def _lock_acquire(self) -> None:
         if not self._use_lock:
@@ -549,7 +550,7 @@ class Illuminate:
             return
         lock = self._make_lock(self.serial_number)
         try:
-            lock.acquire(timeout=0.001)
+            lock.acquire()
         except Timeout:
             raise RuntimeError(
                 "This pyilluminate board has been opened already. "
