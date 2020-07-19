@@ -50,6 +50,16 @@ known_mac_addresses = {
 MAX_ARGUMENT_CHAR_COUNT = 1500
 
 
+def get_port_serial_number(port):
+    coms = comports()
+    for c in coms:
+        if c.device == port:
+            return c.serial_number
+
+    else:
+        raise ValueError(f"Did not find the requested port: {port}")
+
+
 @dataclass
 class LEDColor:
     """Generic class for representing colors."""
@@ -188,6 +198,9 @@ class Illuminate:
         self._mac_address = ""
         self._interface_bit_depth = 8
         self.serial = None
+        if port is not None and serial_number is None:
+            serial_number = get_port_serial_number(port)
+
         if timeout < 0.4:
             warn('Timeout too small, try providing at least 0.5 seconds.')
 
@@ -220,8 +233,7 @@ class Illuminate:
         if hasattr(self.serial, 'set_buffer_size'):
             # this doesn't exist on all platforms
             self.serial.set_buffer_size(rx_size=50000)
-        if port is not None:
-            self.serial.port = port
+
         if open_device:
             self.open()
 

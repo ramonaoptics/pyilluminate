@@ -1,6 +1,8 @@
 from pyilluminate import Illuminate
 import pytest
 
+pytestmark = pytest.mark.device
+
 
 def tests_filelock_multiBoard():
 
