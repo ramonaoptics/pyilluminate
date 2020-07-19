@@ -1,3 +1,7 @@
+## 0.5.8 (2020/07/19)
+
+ * Better handler for lock timeout for downstream developers.
+
 ## 0.5.7 (2020/07/19)
 
  * Multiple users can attempt to use the pyilluminate boards at the same time.
