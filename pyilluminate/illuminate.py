@@ -344,29 +344,18 @@ class Illuminate:
                 self.serial.port = port
                 self.serial_number = serial_number
 
-            # lock will only be called if the device is closed
-            unique_pyilluminate_locktxt = (
-                tempfile.gettempdir() +
-                f"/pyilluminate_{self.serial_number}.lock")
-            self.lock = FileLock(unique_pyilluminate_locktxt)
-
-            try:
-                self.lock.acquire(timeout=0.001)
-            except Timeout:
-                raise RuntimeError(
-                    "This pyilluminate board has been opened already. "
-                    "Establish a new connection by closing this board."
-                )
+            self._lock_acquire()
 
             try:
                 self.serial.open()
             except SerialException:
-                self.lock.release()
+                self._lock_release()
                 raise SerialException(
                     "Must close previous Illuminate connection before "
                     "establishing a new one. If there is a previous instance "
                     "of Illuminate either delete the object or call the "
                     "'close' method.")
+
         sleep(0.1)
 
         self.serial.reset_output_buffer()
@@ -448,7 +437,37 @@ class Illuminate:
             self.clear()
             self.serial.flush()
             self.serial.close()
-            self.lock.release()
+
+        self._lock_release()
+
+    @staticmethod
+    def _make_lock(serial_number) -> FileLock:
+        # lock will only be called if the device is closed
+        unique_pyilluminate_locktxt = (
+            tempfile.gettempdir() +
+            f"/pyilluminate_{serial_number}.lock")
+        return FileLock(unique_pyilluminate_locktxt)
+
+    def _lock_acquire(self) -> None:
+        lock = self._make_lock(self.serial_number)
+        try:
+            lock.acquire(timeout=0.001)
+        except Timeout:
+            raise RuntimeError(
+                "This pyilluminate board has been opened already. "
+                "Establish a new connection by closing this board."
+            )
+
+        # Only assign the new lock object after it has been acquired.
+        self._lock = lock
+
+    def _lock_release(self) -> None:
+        # During garbage collection, the serial
+        # device might have been closed first
+        # Make sure we cleanup the lock in either case
+        if self._lock is not None:
+            self._lock.release()
+            self._lock = None
 
     def write(self, data) -> None:
         """Write data to the port.
