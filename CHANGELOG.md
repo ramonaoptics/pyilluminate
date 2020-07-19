@@ -1,6 +1,7 @@
-## 0.5.6 (TBD)
+## 0.5.6 (2020/07/19)
 
  * Bugfix: LED boards can be open by specifying ``port`` parameter again.
+ * Private functions for lock and unlock for downstream developers.
 
 ## 0.5.5 (2020/07/06)
 
