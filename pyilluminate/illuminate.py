@@ -12,8 +12,84 @@ import xarray as xr
 import numpy as np
 from serial import Serial, SerialException
 from serial.tools.list_ports import comports
-from filelock import Timeout, FileLock
+from filelock import FileLock, Timeout
 import tempfile
+import shutil
+from pathlib import Path
+import os
+
+
+# Creating the locks directly in the /tmp dir on linux causes
+# many problems since the `/tmp` dir has the sticky bit enabled.
+# The sticky bit stops an other user from deleting your file.
+# It seems that this stops some other user from opening a file for
+#
+# We tried to use `SoftFileLock` and while it worked,
+# SoftFileLocks did not automatically get deleted upon the crash
+# or force quit of a python console.
+# This made them really problematic when closing python quickly.
+#
+# Therefore, we store all our locks in a subdirectory
+# On linux we set the group of this MultiUserFileLock to
+# `dialout`, which is the same group that the USB ports
+# appear under.
+if os.name == 'nt':
+    # Windows has a pretty bad per use /tmp directory
+    # We therefore use the public directory, and create a tempdir in there
+    tmpdir = Path(os.environ.get('public', r'C:\Users\Public')) / 'tmp'
+else:
+    tmpdir = tempfile.gettempdir()
+locks_dir = Path(tmpdir) / 'pyilluminate'
+
+
+class MultiUserFileLock(FileLock):
+    def __init__(self, *args, user=None, group=None, chmod=0o666, **kwargs):
+        if os.name == 'nt':
+            self._user = None
+            self._group = None
+        else:
+            self._user = user
+            self._group = group
+        self._chmod = chmod
+        # Will create a ._lock_file object
+        # but will not create the files on the file system
+        super().__init__(*args, **kwargs)
+        parent = self._lock_file.parent
+        # Even though the "other write" permissions are enabled
+        # it seems that the operating systems disables that for the /tmp dir
+        parent.mkdir(mode=0o777, parents=True, exist_ok=True)
+
+        if self._group is not None and parent.group() != self._group:
+            shutil.chown(parent, group=self._group)
+
+        # Changing the owner in the tmp directory is hard..
+        if self._user is not None and parent.owner() != self._user:
+            shutil.chown(parent, user=self._user)
+
+    def acquire(self, *args, **kwargs):
+        super().acquire(*args, **kwargs)
+        # once the lock has been acquired, we are more guaranteed that the
+        # _lock_file exists
+        if self._chmod:
+            desired_permissions = self._chmod
+            current_permissions = self._lock_file.stat().st_mode
+
+            missing_permissions = (
+                current_permissions & desired_permissions
+            ) ^ desired_permissions
+
+            # changing permissions can be tricky, so only change them
+            # if we need to
+            if missing_permissions != 0:
+                # Make sure the parent directory can be written to by others
+                self._lock_file.chmod(desired_permissions)
+        if self._group is not None:
+            if self._lock_file.group() != self._group:
+                shutil.chown(self._lock_file, group=self._group)
+        if self._user is not None:
+            if self._lock_file.owner() != self._user:
+                shutil.chown(self._lock_file, user=self._user)
+
 
 """
 Trigger notes from Zack's code.
@@ -171,7 +247,7 @@ class Illuminate:
                  baudrate: int=115200, timeout: float=0.500,
                  open_device: bool=True, mac_address: str=None,
                  serial_number: str=None,
-                 precision=8) -> None:
+                 precision=8, use_lock=True) -> None:
         """Open the Illumination board.
 
         Parameters
@@ -193,11 +269,23 @@ class Illuminate:
         serial_number:
             This is the serial number of the teensy USB controller. Only
             one serial_number will be addressed at a time.
+        precision: int, 0, 8 or 16
+            Color precision to use when setting the LED color. Valid values
+            include 8 and 16 bit. Setting a value of 0 indicates that numbers
+            between 0 and 1 are used.
+        use_lock: bool
+            If set to False, a lock will not be used to secure the connection.
+
         """
+        # Create objects that we assume exist
+        self._use_lock = use_lock
+        self._lock = None
+        self.serial = None
+
+        # Create default values for device parameters
         self._color = (0., 0., 0.)
         self._mac_address = ""
         self._interface_bit_depth = 8
-        self.serial = None
         if port is not None and serial_number is None:
             serial_number = get_port_serial_number(port)
 
@@ -227,7 +315,8 @@ class Illuminate:
         # Explicitely provide None to the port so as to delay opening
         # the device until the very end of the setup
         self.serial = Serial(port=None,
-                             baudrate=baudrate, timeout=timeout)
+                             baudrate=baudrate, timeout=timeout,
+                             exclusive=True)
         # Make the buffer size really large since the LED positions,
         # communicated as a JSON string take quite a few characters to send
         if hasattr(self.serial, 'set_buffer_size'):
@@ -441,14 +530,23 @@ class Illuminate:
         self._lock_release()
 
     @staticmethod
-    def _make_lock(serial_number) -> FileLock:
+    def _make_lock(
+            serial_number, group='dialout', chmod=0o666) -> MultiUserFileLock:
+        # 0o666 is chosen because that is the default permission set
+        # by most people installing the teensy by default
+        # https://www.pjrc.com/teensy/loader_linux.html
+        # Check the udev rules file
+        unique_pyilluminate_locktxt = locks_dir / f"{serial_number}.lock"
         # lock will only be called if the device is closed
-        unique_pyilluminate_locktxt = (
-            tempfile.gettempdir() +
-            f"/pyilluminate_{serial_number}.lock")
-        return FileLock(unique_pyilluminate_locktxt)
+        # (when isOpen is called).
+        return MultiUserFileLock(unique_pyilluminate_locktxt,
+                                 group=group, chmod=chmod)
 
     def _lock_acquire(self) -> None:
+        if not self._use_lock:
+            # If the use isn't requesting to use a lock, simply return
+            # immediately
+            return
         lock = self._make_lock(self.serial_number)
         try:
             lock.acquire(timeout=0.001)
