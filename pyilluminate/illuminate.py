@@ -302,14 +302,7 @@ class Illuminate:
                  f'with the device with mac_address="{mac_address}" is '
                  f'"{serial_number}".', stacklevel=2)
 
-        if serial_number is not None:
-            available_ports = self._device_serial_number_pairs(
-                serial_numbers=[serial_number])
-            if len(available_ports) == 0:
-                raise RuntimeError(
-                    f"Could not find serial number: {serial_number}")
-            port, found_serial_number = available_ports[0]
-            self.serial_number = found_serial_number
+        self.serial_number = serial_number
 
         self.reboot_on_start = reboot_on_start
         # Explicitely provide None to the port so as to delay opening
@@ -426,7 +419,12 @@ class Illuminate:
         if not self.serial.isOpen():
 
             if self.serial.port is None:
-                available_ports = self._device_serial_number_pairs()
+                if self.serial_number is None:
+                    serial_numbers = None
+                else:
+                    serial_numbers = [self.serial_number]
+                available_ports = self._device_serial_number_pairs(
+                    serial_numbers)
                 if len(available_ports) == 0:
                     raise RuntimeError("No Illuminate devices found")
                 port, serial_number = available_ports[0]
