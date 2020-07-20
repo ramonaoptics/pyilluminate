@@ -1,3 +1,7 @@
+## 0.5.9 (2020/07/19)
+
+ * Fix openning device by serial number.
+
 ## 0.5.8 (2020/07/19)
 
  * Better handler for lock timeout for downstream developers.
