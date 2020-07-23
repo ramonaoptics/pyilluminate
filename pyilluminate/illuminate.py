@@ -521,8 +521,14 @@ class Illuminate:
     def close(self) -> None:
         """Force close the serial port."""
         if self.serial is not None and self.serial.isOpen():
-            self.clear()
-            self.serial.flush()
+            try:
+                self.clear()
+                self.serial.flush()
+            except SerialException:
+                # Ignore any Serial Exceptions that may arise due to
+                # a user prematurely removing the USB connection before the
+                # device is closed.
+                pass
             self.serial.close()
 
         self._lock_release()

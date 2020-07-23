@@ -1,3 +1,7 @@
+## 0.5.10 (2020/07/22)
+
+ * Ignore serial communication errors upon closing are ignored.
+
 ## 0.5.9 (2020/07/19)
 
  * Fix openning device by serial number.
