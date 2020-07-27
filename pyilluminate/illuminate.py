@@ -412,37 +412,53 @@ class Illuminate:
     def __exit__(self, *args):
         self.close()
 
+    def _find_port_number(self):
+        if self.serial.port is None:
+            if self.serial_number is None:
+                serial_numbers = None
+            else:
+                serial_numbers = [self.serial_number]
+            available_ports = self._device_serial_number_pairs(
+                serial_numbers)
+            if len(available_ports) == 0:
+                raise RuntimeError("No Illuminate devices found")
+
+            port, serial_number = available_ports[0]
+            self.serial.port = port
+            self.serial_number = serial_number
+
     def open(self) -> None:
+        if not self.serial.isOpen():
+            self._find_port_number()
+            self._lock_acquire()
+            try:
+                self._open()
+            except Exception as e:
+                self._lock_release()
+                raise e
+
+    def _open(self) -> None:
         """Open the serial port. Only useful if you closed it."""
         if self.serial is None:
             raise RuntimeError("__init__ must be successfully called first")
         if not self.serial.isOpen():
-
-            if self.serial.port is None:
-                if self.serial_number is None:
-                    serial_numbers = None
-                else:
-                    serial_numbers = [self.serial_number]
-                available_ports = self._device_serial_number_pairs(
-                    serial_numbers)
-                if len(available_ports) == 0:
-                    raise RuntimeError("No Illuminate devices found")
-                port, serial_number = available_ports[0]
-                self.serial.port = port
-                self.serial_number = serial_number
-
-            self._lock_acquire()
-
+            self._find_port_number()
             try:
                 self.serial.open()
             except SerialException:
-                self._lock_release()
                 raise SerialException(
                     "Must close previous Illuminate connection before "
                     "establishing a new one. If there is a previous instance "
                     "of Illuminate either delete the object or call the "
                     "'close' method.")
 
+        try:
+            self._open_startup_procedure()
+        except Exception:
+            self.serial.close()
+            raise
+
+    def _open_startup_procedure(self):
         sleep(0.1)
 
         self.serial.reset_output_buffer()
