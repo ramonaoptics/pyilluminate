@@ -1,3 +1,7 @@
+## 0.5.11 (2020/07/27)
+
+ * Better recovery from serial exceptions during boot up procedure.
+
 ## 0.5.10 (2020/07/22)
 
  * Ignore serial communication errors upon closing are ignored.
