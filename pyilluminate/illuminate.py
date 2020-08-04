@@ -281,6 +281,7 @@ class Illuminate:
         self._use_lock = use_lock
         self._lock = None
         self.serial = None
+        self._led_positions = None
 
         # Create default values for device parameters
         self._color = (0., 0., 0.)
@@ -348,6 +349,8 @@ class Illuminate:
         }
         loaded_parameters = json.loads(p_raw)
         parameters.update(loaded_parameters)
+
+        self.N_leds = parameters['led_count']
         self._device_name = parameters['device_name']
         self._part_number = parameters['part_number']
         self._serial_number = parameters['serial_number']
@@ -363,6 +366,10 @@ class Illuminate:
         # There are a ton of default properties that are not easy to read.
         # Maybe I can get Zack to implement reading them, but I'm not sure if
         # that will be possible.
+
+    def _read_led_positions(self):
+        # This method is defined so that other creators of LED boards
+        # Can redfine it as necessary to optimize various aspects.
 
         # as dictionary
         # Units at this point are in mm
@@ -383,8 +390,6 @@ class Illuminate:
                 sleep(0.1)
         else:
             raise error
-
-        self.N_leds = len(p)
 
         led_positions = xr.DataArray(
             np.empty((self.N_leds, 3)),
@@ -1267,6 +1272,9 @@ class Illuminate:
     @property
     def led_positions(self) -> xr.DataArray:
         """Position of each LED in cartesian coordinates[mm]."""
+        if self._led_positions is None:
+            self._read_led_positions()
+
         return self._led_positions
 
     def positions_as_xarray(self):
