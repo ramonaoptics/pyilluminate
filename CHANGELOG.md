@@ -1,3 +1,7 @@
+## 0.5.12 (2020/08/04)
+
+ * Enable downstream to override how led_positions are obtained.
+
 ## 0.5.11 (2020/07/27)
 
  * Better recovery from serial exceptions during boot up procedure.
