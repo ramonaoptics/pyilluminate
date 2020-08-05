@@ -282,6 +282,7 @@ class Illuminate:
         self._lock = None
         self.serial = None
         self._led_positions = None
+        self._help = None
 
         # Create default values for device parameters
         self._color = (0., 0., 0.)
@@ -463,6 +464,10 @@ class Illuminate:
             self.serial.close()
             raise
 
+        # Reset cached variables
+        self._led_positions = None
+        self._help = None
+
     def _open_startup_procedure(self):
         sleep(0.1)
 
@@ -488,11 +493,10 @@ class Illuminate:
                       e.args)
             raise e
 
-        # Cache the help string
-        # Simply print the raw information the way Zack has it formatted.
-        self._help = self._ask_string('?', raw=True)
-
-        self._has_autoupdate = 'au / autoUpdate' in self._help
+        if LooseVersion(self.version) > '1.13':
+            self._has_autoupdate = True
+        else:
+            self._has_autoupdate = False
 
         # Set it to clear between commands.
         # This may have changed due to the user having previously
@@ -720,6 +724,10 @@ class Illuminate:
     @property
     def help(self) -> str:
         """Display help information from the illuminate board."""
+        if self._help is None:
+            # Cache the help string
+            # Simply print the raw information the way Zack has it formatted.
+            self._help = self._ask_string('?', raw=True)
         return self._help
 
     @property
