@@ -1,3 +1,8 @@
+## 0.5.14 (2020/08/05)
+
+ * LED boards can now report the value of the color for all LEDs in the
+   `led_colors` property.
+
 ## 0.5.13 (2020/08/04)
 
  * Better detection of autoUpdate feature without loading the full Help file.
