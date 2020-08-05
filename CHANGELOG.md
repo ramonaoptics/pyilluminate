@@ -1,3 +1,7 @@
+## 0.5.13 (2020/08/04)
+
+ * Better detection of autoUpdate feature without loading the full Help file.
+
 ## 0.5.12 (2020/08/04)
 
  * Enable downstream to override how led_positions are obtained.
