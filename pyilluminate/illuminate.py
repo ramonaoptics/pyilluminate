@@ -343,6 +343,17 @@ class Illuminate:
         # Maybe I can get Zack to implement reading them, but I'm not sure if
         # that will be possible.
 
+        led_state = xr.DataArray(
+            np.zeros((self.N_leds, 3)),
+            dims=['led_number', 'rgb'],
+            coords={'led_number': np.arange(self.N_leds),
+                    'rgb': ['r', 'g', 'b']})
+        led_state['precision'] = self.precision
+        led_state['firmware_version'] = self.version
+        led_state['device_name'] = self.device_name
+        led_state['serial_number'] = self.serial_number
+        self._led_state = led_state
+
     def _read_led_positions(self):
         # This method is defined so that other creators of LED boards
         # Can redfine it as necessary to optimize various aspects.
@@ -384,16 +395,6 @@ class Illuminate:
             led_positions[key, 0] = item[2] * 0.01
 
         self._led_positions = led_positions
-        led_state = xr.DataArray(
-            np.zeros((self.N_leds, 3)),
-            dims=['led_number', 'rgb'],
-            coords={'led_number': np.arange(self.N_leds),
-                    'rgb': ['r', 'g', 'b']})
-        led_state['precision'] = self.precision
-        led_state['firmware_version'] = self.version
-        led_state['device_name'] = self.device_name
-        led_state['serial_number'] = self.serial_number
-        self._led_state = led_state
 
     @property
     def precision(self):
