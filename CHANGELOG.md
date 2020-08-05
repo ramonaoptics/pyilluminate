@@ -1,3 +1,7 @@
+## 0.5.15 (2020/08/05)
+
+ * LED state now correctly initialized to avoid spurious errors.
+
 ## 0.5.14 (2020/08/05)
 
  * LED boards can now report the value of the color for all LEDs in the
