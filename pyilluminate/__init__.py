@@ -9,7 +9,7 @@ Copyright (C) 2018, Ramona Optics, Inc.
 """
 
 from .illuminate import Illuminate  # noqa
-from .illuminate import LEDColor  # noqa
+from .led_color import LEDColor  # noqa
 
 from ._version import get_versions
 __version__ = get_versions()['version']

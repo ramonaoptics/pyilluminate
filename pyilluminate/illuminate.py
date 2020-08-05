@@ -5,7 +5,6 @@ from warnings import warn
 from typing import List, Union, Optional, Iterable, Tuple
 import collections
 from distutils.version import LooseVersion
-from dataclasses import dataclass
 
 import xarray as xr
 
@@ -17,6 +16,8 @@ import tempfile
 import shutil
 from pathlib import Path
 import os
+
+from .led_color import LEDColor
 
 
 # Creating the locks directly in the /tmp dir on linux causes
@@ -134,32 +135,6 @@ def get_port_serial_number(port):
 
     else:
         raise ValueError(f"Did not find the requested port: {port}")
-
-
-@dataclass
-class LEDColor:
-    """Generic class for representing colors."""
-    red: int = 0
-    green: int = 0
-    blue: int = 0
-    brightness: Optional[int] = None
-
-    def __init__(self, *, brightness: int=None,
-                 red: int=0, green: int=0, blue: int=0):
-        warn("The LEDColor Class has been deprecated. "
-             "Please use a standard tuple of 3 or List of 3 elements.")
-        if brightness is not None:
-            red = brightness
-            green = brightness
-            blue = brightness
-        self.brightness = brightness
-
-        self.red = int(red)
-        self.green = int(green)
-        self.blue = int(blue)
-
-    def __iter__(self):
-        return (i for i in (self.red, self.green, self.blue))
 
 
 class Illuminate:
@@ -397,6 +372,9 @@ class Illuminate:
             dims=['led_number', 'zyx'],
             coords={'led_number': np.arange(self.N_leds),
                     'zyx': ['z', 'y', 'x']})
+        led_positions['serial_number'] = self.serial_number
+        led_positions['firmware_version'] = self.version
+        led_positions['device_name'] = self.device_name
         for key, item in p.items():
             # x, y are provided in units of mm
             # z is provided in units of cm
@@ -406,6 +384,23 @@ class Illuminate:
             led_positions[key, 0] = item[2] * 0.01
 
         self._led_positions = led_positions
+        led_state = xr.DataArray(
+            np.zeros((self.N_leds, 3)),
+            dims=['led_number', 'rgb'],
+            coords={'led_number': np.arange(self.N_leds),
+                    'rgb': ['r', 'g', 'b']})
+        led_state['precision'] = self.precision
+        led_state['firmware_version'] = self.version
+        led_state['device_name'] = self.device_name
+        led_state['serial_number'] = self.serial_number
+        self._led_state = led_state
+
+    @property
+    def precision(self):
+        """Python interface bitdepth"""
+        # TODO: this is a pretty bad word, and we should probably just move
+        # toward 16 bit depth at this stage
+        return self._precision
 
     @property
     def led_count(self) -> int:
@@ -445,8 +440,6 @@ class Illuminate:
 
     def _open(self) -> None:
         """Open the serial port. Only useful if you closed it."""
-        if self.serial is None:
-            raise RuntimeError("__init__ must be successfully called first")
         if not self.serial.isOpen():
             self._find_port_number()
             try:
@@ -980,10 +973,28 @@ class Illuminate:
                 self.update()
         self._led = leds
 
+    @property
+    def _led(self):
+        return self._led_cache
+
+    @_led.setter
+    def _led(self, value):
+        self._update_led_state(value)
+
+    def _update_led_state(self, led, force_clear=False):
+        # Certain functions, like special patterns, or fill array
+        # Will clear the LEDs regardless of the `autoclear` functionality
+        # THerefore,allow them to add the force clear parameter
+        color = np.asarray(self.color)
+        if force_clear or self.autoclear:
+            self._led_state.data[...] = 0
+        self._led_state.data[led] = color
+        self._led_cache = led
+
     def clear(self) -> None:
         """Clear the LED array."""
         self.ask('x')
-        self._led = []
+        self._update_led_state([], force_clear=True)
 
     def update(self) -> None:
         """Update the LED array."""
@@ -996,7 +1007,7 @@ class Illuminate:
     def fill_array(self) -> None:
         """Fill the LED array with default color."""
         self.ask('ff')
-        self._led = list(range(self._led_count))
+        self._update_led_state(list(range(self._led_count)), force_clear=True)
 
     def brightfield(self) -> None:
         """Display brightfield pattern."""
@@ -1284,6 +1295,11 @@ class Illuminate:
             self._read_led_positions()
 
         return self._led_positions
+
+    @property
+    def led_state(self) -> xr.DataArray:
+        """Current state of the Illuminate LEDs in RGB as a DataArray."""
+        return self._led_state
 
     def positions_as_xarray(self):
         """Return the position of the led information as an xarray.DataArray.
