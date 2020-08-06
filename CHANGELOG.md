@@ -1,3 +1,7 @@
+## 0.5.16 (2020/08/06)
+
+ * FakeIlluminate device now has an ignored `led_type` parameter for fill_array.
+
 ## 0.5.15 (2020/08/05)
 
  * LED state now correctly initialized to avoid spurious errors.
