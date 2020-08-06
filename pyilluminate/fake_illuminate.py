@@ -125,7 +125,8 @@ class FakeIlluminate(Illuminate):
     def clear(self):
         self._update_led_state([], force_clear=True)
 
-    def fill_array(self):
+    def fill_array(self, led_type='rgb'):
+        # Ignore led_type for the fake illuminate device
         self._led = list(range(self.N_leds))
 
     @property
