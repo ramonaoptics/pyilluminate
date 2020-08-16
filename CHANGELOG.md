@@ -1,3 +1,8 @@
+## 0.5.17 (2020/08/16)
+
+ * Avoid buffer overflow errors by ensuring that strings are cut in 64 bytes.
+   This may make custom LED commands slower.
+
 ## 0.5.16 (2020/08/06)
 
  * FakeIlluminate device now has an ignored `led_type` parameter for fill_array.

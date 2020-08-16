@@ -124,7 +124,10 @@ known_mac_addresses = {
 
 # Typically defined in commandrouting.h
 # Increasing this causes more errors in the firmware
-MAX_ARGUMENT_CHAR_COUNT = 1500
+# I'm not too sure, but for some reason setting this number above
+# 64 makes communication fail.
+# https://forum.pjrc.com/threads/54773-Inreasing-USB-Serial-Buffer-Teensy-3-2
+MAX_ARGUMENT_CHAR_COUNT = 64 * 1
 
 
 def get_port_serial_number(port):
