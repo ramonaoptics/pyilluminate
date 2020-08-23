@@ -1,4 +1,6 @@
 from .illuminate import Illuminate
+from .led_color import LEDColor
+import collections
 import numpy as np
 import xarray as xr
 
@@ -10,13 +12,17 @@ class FakeIlluminate(Illuminate):
         Use only for testing the callback and metadata.
         """
         kwargs.setdefault('precision', 8)
+        kwargs.setdefault('interface_bit_depth', 16)
         self.N_leds = N_leds
-        self.brightness = 1
         self.autoclear = True
         self._precision = kwargs['precision']
-        if self._precision != 8:
-            raise ValueError(
-                "FakeIlluminate not implemented for precisions other than 8.")
+        self._interface_bit_depth = kwargs['interface_bit_depth']
+
+        self._scale_factor = (
+            ((1 << self._interface_bit_depth) - 1) /
+            ((1 << self._precision) - 1)
+        )
+        self.brightness = 1
 
         self._led_positions = xr.DataArray(
             # TODO: set this as np.empty when below is doen
@@ -120,7 +126,19 @@ class FakeIlluminate(Illuminate):
 
     @color.setter
     def color(self, c):
-        self._color = c
+        if isinstance(c, LEDColor):
+            c = (float(c.red), float(c.green), float(c.blue))
+        elif not isinstance(c, collections.abc.Iterable):
+            # Make it a 3 tuple
+            c = (c,) * 3
+
+        # Downcast to int for safety
+        c = tuple(int(i * self._scale_factor) for i in c)
+
+        # Remember the user color, in the units the user provided it
+        user_color = tuple(float(i / self._scale_factor) for i in c)
+
+        self._color = user_color
 
     def clear(self):
         self._update_led_state([], force_clear=True)

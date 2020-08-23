@@ -853,11 +853,11 @@ class Illuminate:
         elif not isinstance(c, collections.abc.Iterable):
             # Make it a 3 tuple
             c = (c,) * 3
-
-        # Remember the user color, as the user provided it
-        user_color = tuple(float(i) for i in c)
         # Downcast to int for safety
         c = tuple(int(i * self._scale_factor) for i in c)
+
+        # Remember the user color, in the units the user provided it
+        user_color = tuple(float(i / self._scale_factor) for i in c)
 
         self.ask(f'sc.{c[0]}.{c[1]}.{c[2]}')
         # Cache the color for future use
