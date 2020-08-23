@@ -261,6 +261,7 @@ class Illuminate:
         self.serial = None
         self._led_positions = None
         self._help = None
+        self._led_cache = []
 
         # Create default values for device parameters
         self._color = (0., 0., 0.)
@@ -480,6 +481,7 @@ class Illuminate:
                 "reconnecting the cable.")
 
         if self.reboot_on_start:
+            self._led_cache = []
             # This reboot procedure will clear the device
             self.reboot()
         try:
@@ -936,7 +938,9 @@ class Illuminate:
             leds = leds.reshape(-1).tolist()
 
         if not leds:
-            return None
+            if self.autoclear:
+                self.clear()
+            return
 
         # make leds a list
         if isinstance(leds, collections.abc.Iterable):
@@ -992,8 +996,11 @@ class Illuminate:
         color = np.asarray(self.color)
         if force_clear or self.autoclear:
             self._led_state.data[...] = 0
+            led_cache = led
+        else:
+            led_cache = list(set(self._led_cache).union(led))
         self._led_state.data[led] = color
-        self._led_cache = led
+        self._led_cache = led_cache
 
     def clear(self) -> None:
         """Clear the LED array."""
