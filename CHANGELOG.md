@@ -1,3 +1,6 @@
+## 0.5.18 (2020/08/23)
+
+ * The ``led`` attribute is not available to read before ever setting it.
 ## 0.5.17 (2020/08/16)
 
  * Avoid buffer overflow errors by ensuring that strings are cut in 64 bytes.

@@ -19,6 +19,7 @@ def light(request):
 
 
 def test_initial_state(light):
+    assert len(light.led) == 0
     assert_array_equal(light.led_state.data, 0)
 
 
@@ -44,9 +45,11 @@ def test_led_and_clear(light):
     led_state_expected[...] = 0
     led_state_expected[led] = color
     assert_array_equal(light.led_state.data, led_state_expected)
+    assert set(light.led) == set(led)
 
     light.autoclear = False
 
+    previous_leds = led
     led = [5, 6, 7, 8]
     color = (1, 1, 1)
     light.color = color
@@ -54,10 +57,12 @@ def test_led_and_clear(light):
     # Do not clear the state
     led_state_expected[led] = color
     assert_array_equal(light.led_state.data, led_state_expected)
+    assert set(light.led) == set(previous_leds).union(led)
 
     light.clear()
     led_state_expected[...] = 0
     assert_array_equal(light.led_state.data, led_state_expected)
+    assert len(light.led) == 0
 
 
 def test_fill_array(light):
