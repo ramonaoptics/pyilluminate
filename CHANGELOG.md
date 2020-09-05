@@ -1,3 +1,8 @@
+## 0.5.19 (2020/09/05)
+
+ * Fix a bug where the previous pattern would continue to appear when sending
+   long lists of LEDs.
+
 ## 0.5.18 (2020/08/23)
 
  * The ``led`` attribute is not available to read before ever setting it.

@@ -965,7 +965,6 @@ class Illuminate:
 
             old_autoclear = self.autoclear
             old_autoupdate = self.autoupdate
-            self.autoclear = False
             # if autoupdate isn't found, then gracefully set the LEDs
             # sequentially, even if it blinks for the user
             if self._has_autoupdate:
@@ -975,6 +974,8 @@ class Illuminate:
                     i * max_leds_per_command:(i + 1) * max_leds_per_command]
                 cmd = 'l.' + '.'.join(str(led) for led in these_leds)
                 self.ask(cmd)
+                if i == 0:
+                    self.autoclear = False
             self.autoclear = old_autoclear
             self.autoupdate = old_autoupdate
             if self._has_autoupdate and old_autoupdate:
