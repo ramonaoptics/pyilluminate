@@ -17,8 +17,6 @@ import shutil
 from pathlib import Path
 import os
 
-from .led_color import LEDColor
-
 
 # Creating the locks directly in the /tmp dir on linux causes
 # many problems since the `/tmp` dir has the sticky bit enabled.
@@ -848,9 +846,7 @@ class Illuminate:
 
     @color.setter
     def color(self, c: Union[float, Iterable[float]]):
-        if isinstance(c, LEDColor):
-            c = (float(c.red), float(c.green), float(c.blue))
-        elif not isinstance(c, collections.abc.Iterable):
+        if not isinstance(c, collections.abc.Iterable):
             # Make it a 3 tuple
             c = (c,) * 3
         # Downcast to int for safety
