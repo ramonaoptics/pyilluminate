@@ -1,3 +1,7 @@
+## 0.6.0 (2020/12/29)
+
+ * Remove ``LEDColor``.
+
 ## 0.5.19 (2020/09/05)
 
  * Fix a bug where the previous pattern would continue to appear when sending

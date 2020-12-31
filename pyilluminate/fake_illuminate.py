@@ -1,5 +1,4 @@
 from .illuminate import Illuminate
-from .led_color import LEDColor
 import collections
 import numpy as np
 import xarray as xr
@@ -126,9 +125,7 @@ class FakeIlluminate(Illuminate):
 
     @color.setter
     def color(self, c):
-        if isinstance(c, LEDColor):
-            c = (float(c.red), float(c.green), float(c.blue))
-        elif not isinstance(c, collections.abc.Iterable):
+        if not isinstance(c, collections.abc.Iterable):
             # Make it a 3 tuple
             c = (c,) * 3
 
