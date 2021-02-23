@@ -1,3 +1,9 @@
+## 0.6.1 (Not yet released)
+
+ * Add a property for getting and setting the maximum allowed current on the board.
+ * Add a property for getting the maximum current per LED channel.
+ * Add a function for calculating the maximum allowed brightness values.
+
 ## 0.6.0 (2020/12/29)
 
  * Remove ``LEDColor``.

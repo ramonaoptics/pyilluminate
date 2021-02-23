@@ -5,7 +5,7 @@ import xarray as xr
 
 
 class FakeIlluminate(Illuminate):
-    def __init__(self, *args, N_leds=377, **kwargs):
+    def __init__(self, *args, maximum_current=8, N_leds=377, **kwargs):
         """Basic fake illuminate device.
 
         Use only for testing the callback and metadata.
@@ -16,6 +16,7 @@ class FakeIlluminate(Illuminate):
         self.autoclear = True
         self._precision = kwargs['precision']
         self._interface_bit_depth = kwargs['interface_bit_depth']
+        self._maximum_current = maximum_current
 
         self._scale_factor = (
             ((1 << self._interface_bit_depth) - 1) /
@@ -163,3 +164,15 @@ class FakeIlluminate(Illuminate):
     @property
     def serial_number(self):
         return '123456'
+
+    @property
+    def led_current_amps(self):
+        return 0.02
+
+    @property
+    def maximum_current(self):
+        return self._maximum_current
+
+    @maximum_current.setter
+    def maximum_current(self, value):
+        self._maximum_current = value
