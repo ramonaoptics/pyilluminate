@@ -223,7 +223,7 @@ class Illuminate:
                  baudrate: int=115200, timeout: float=0.500,
                  open_device: bool=True, mac_address: str=None,
                  serial_number: str=None,
-                 precision=8, use_lock=True) -> None:
+                 precision=8, use_lock=True, maximum_current=8,) -> None:
         """Open the Illumination board.
 
         Parameters
@@ -251,6 +251,8 @@ class Illuminate:
             between 0 and 1 are used.
         use_lock: bool
             If set to False, a lock will not be used to secure the connection.
+        maximum_current: int
+            The maximum current limit to be set on the illumination board.
 
         """
         # Create objects that we assume exist
@@ -260,6 +262,7 @@ class Illuminate:
         self._led_positions = None
         self._help = None
         self._led_cache = []
+        self._maximum_current = maximum_current
 
         # Create default values for device parameters
         self._color = (0., 0., 0.)
@@ -463,6 +466,9 @@ class Illuminate:
         # Reset cached variables
         self._led_positions = None
         self._help = None
+
+        # get/set firmware constants
+        self.maximum_current = self._maximum_current
 
     def _open_startup_procedure(self):
         sleep(0.1)
@@ -714,6 +720,18 @@ class Illuminate:
             return ''
 
     @property
+    def led_current_amps(self):
+        """Maximum current in amps per LED channel."""
+        result = self._ask_list("getLedCurrentAmps")
+        try:
+            self._check_output(result)
+            led_current_amps = float(result[0])
+        except NotImplementedError:
+            # Version 1.20.6 has a new command for returning this value
+            led_current_amps = 0.02
+        return led_current_amps
+
+    @property
     def mac_address(self) -> str:
         """MAC Address of the Teansy that drives the LED board."""
         return self._mac_address
@@ -859,6 +877,19 @@ class Illuminate:
         # Cache the color for future use
         self._color = user_color  # type: ignore
         # man, mypy is annoying.... i can't get typing for this one to work
+
+    @property
+    def maximum_current(self):
+        return self._maximum_current
+
+    @maximum_current.setter
+    def maximum_current(self, value):
+        value = int(round(value))
+        self.ask('setMaxCurrent.' + f"{value:d}")
+        # Cache the value so that firmwares with version less
+        # than 1.20.6 can read it back in python.
+        # Prior version 1.20.6, we can only set, but not get the value.
+        self._maximum_current = value
 
     @property
     def color_maximum_value(self):
@@ -1204,6 +1235,33 @@ class Illuminate:
 
         self.ask('ssbd.' + str(bitdepth))
         self._sequence_bit_depth = bitdepth
+
+    def find_max_brightness(self, num_leds, color_ratio=(1, 1, 1)):
+        """Calculate the maximum brightness for each color channel of an LED
+        that won't exceed the TLC's internal current limit.
+
+        Paramters
+        -------
+        num_leds: int
+            The number of LEDs to be illuminated.
+        color_ratio: (float, float, float)
+            The required ratio for the brightness values
+            of each color channel (r, g, b)
+
+        Returns
+        -------
+        brightness: (float, float, float)
+            The maximum scaled brightness for each color channel.
+        """
+        uint16_max = 65535
+
+        # equation modified from TLC5955 driver
+        total_brightness = (self.maximum_current * uint16_max /
+                            (num_leds * self._scale_factor *
+                             self.led_current_amps))
+
+        color_ratio = color_ratio / np.sum(color_ratio)
+        return total_brightness * color_ratio
 
     def trigger(self, index):
         """Output TTL trigger pulse to camera."""
