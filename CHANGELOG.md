@@ -1,4 +1,4 @@
-## 0.6.1 (Not yet released)
+## 0.6.1 (2020/03/01)
 
  * Add a property for getting and setting the maximum allowed current on the board.
  * Add a property for getting the maximum current per LED channel.
