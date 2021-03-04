@@ -1241,7 +1241,7 @@ class Illuminate:
         that won't exceed the TLC's internal current limit.
 
         Paramters
-        -------
+        ---------
         num_leds: int
             The number of LEDs to be illuminated.
         color_ratio: (float, float, float)
