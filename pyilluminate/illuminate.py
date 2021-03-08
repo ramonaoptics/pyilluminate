@@ -1254,14 +1254,20 @@ class Illuminate:
             The maximum scaled brightness for each color channel.
         """
         uint16_max = 65535
+        color_ratio = np.asarray(color_ratio)
+        color_ratio = color_ratio / np.sum(color_ratio)
 
         # equation modified from TLC5955 driver
         total_brightness = (self.maximum_current * uint16_max /
                             (num_leds * self._scale_factor *
                              self.led_current_amps))
 
-        color_ratio = color_ratio / np.sum(color_ratio)
-        return total_brightness * color_ratio
+        max_brightness = total_brightness * color_ratio
+
+        max_one_led_brightness = np.max(max_brightness)
+        if max_one_led_brightness > 255:
+            max_brightness = max_brightness * 255 / max_one_led_brightness
+        return tuple(max_brightness)
 
     def trigger(self, index):
         """Output TTL trigger pulse to camera."""
