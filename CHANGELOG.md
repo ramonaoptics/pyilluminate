@@ -1,3 +1,8 @@
+## 0.6.3 (2021/03/08)
+
+ * Fixed a bug where estimating the maximum brigthness can return values that
+   are too large for small numbers of LEDs.
+
 ## 0.6.2 (2021/03/04)
 
  * Docstring formatting fixes.
