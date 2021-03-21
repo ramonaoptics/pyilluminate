@@ -1,3 +1,8 @@
+## 0.6.4 (2021/03/20)
+
+ * Fixed typo in docs of ``Illuminate.find_max_brightness`` causing a section
+   header to be mis-identified.
+
 ## 0.6.3 (2021/03/08)
 
  * Fixed a bug where estimating the maximum brigthness can return values that
