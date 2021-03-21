@@ -1240,8 +1240,8 @@ class Illuminate:
         """Calculate the maximum brightness for each color channel of an LED
         that won't exceed the TLC's internal current limit.
 
-        Paramters
-        ---------
+        Parameters
+        ----------
         num_leds: int
             The number of LEDs to be illuminated.
         color_ratio: (float, float, float)
