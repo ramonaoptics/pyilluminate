@@ -261,6 +261,7 @@ class Illuminate:
         self.serial = None
         self._led_positions = None
         self._help = None
+        self._led_state = None
         self._led_cache = []
         self._maximum_current = maximum_current
 
@@ -1018,6 +1019,11 @@ class Illuminate:
         self._update_led_state(value)
 
     def _update_led_state(self, led, force_clear=False):
+        # The LED state might not exist if the system hasn't booted up
+        # Therefore, skip any errors that may occur on "Unefined variable"
+        # self._led_state
+        if self._led_state is None:
+            return
         # Certain functions, like special patterns, or fill array
         # Will clear the LEDs regardless of the `autoclear` functionality
         # THerefore,allow them to add the force clear parameter

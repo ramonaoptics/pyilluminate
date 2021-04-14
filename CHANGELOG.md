@@ -1,3 +1,8 @@
+## 0.6.5 (2021/04/13)
+
+ * Avoid bogus errors on the system trying to recover from a serial error
+   caused by undefined `_led_state`.
+
 ## 0.6.4 (2021/03/20)
 
  * Fixed typo in docs of ``Illuminate.find_max_brightness`` causing a section
