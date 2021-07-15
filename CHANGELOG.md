@@ -1,3 +1,8 @@
+## 0.6.6 (2021/07/15)
+
+ * Ensured that `color` property has a maximum value of 255.0 for all three color channels.
+   A warning is provided to users when they set the colors above the maximal value.
+
 ## 0.6.5 (2021/04/13)
 
  * Avoid bogus errors on the system trying to recover from a serial error

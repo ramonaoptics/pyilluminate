@@ -266,7 +266,7 @@ class Illuminate:
         self._maximum_current = maximum_current
 
         # Create default values for device parameters
-        self._color = (0., 0., 0.)
+        self._color = (0, 0, 0)
         self._mac_address = ""
         self._interface_bit_depth = 8
         if port is not None and serial_number is None:
@@ -861,22 +861,30 @@ class Illuminate:
         blue
             Integer value for the blue pixels.
         """
-        return self._color
+        user_color = tuple(float(i / self._scale_factor) for i in self._color)
+        return user_color
 
     @color.setter
     def color(self, c: Union[float, Iterable[float]]):
         if not isinstance(c, collections.abc.Iterable):
             # Make it a 3 tuple
-            c = (c,) * 3
+            c = (c, c, c)
+
         # Downcast to int for safety
+        max_color_int = (1 << self._interface_bit_depth) - 1
         c = tuple(int(i * self._scale_factor) for i in c)
 
-        # Remember the user color, in the units the user provided it
-        user_color = tuple(float(i / self._scale_factor) for i in c)
+        # Clips color channel to approximately 255 if user input exceeds that
+        if any(i > max_color_int for i in c):
+            c = tuple(min(i, max_color_int) for i in c)
+            user_color = tuple(float(i / self._scale_factor) for i in c)
+            warn(f"Maximum color ({self.color_maximum_value})"
+                 " exceeded. Requested color clipped to"
+                 f" {user_color}", stacklevel=2)
 
         self.ask(f'sc.{c[0]}.{c[1]}.{c[2]}')
         # Cache the color for future use
-        self._color = user_color  # type: ignore
+        self._color = c
         # man, mypy is annoying.... i can't get typing for this one to work
 
     @property
@@ -985,6 +993,10 @@ class Illuminate:
             self.ask(cmd)
         else:
             # Need to breakup the command
+            # otherwise serial transmission might fail
+            # Mark noticed that one attempts to send more than 64 bytes of
+            # data at a time, data gets "lost"
+            # This seems to be a buffer issue in the teensy.
             chars_per_led = 1 + len(str(max(leds)))
             max_leds_per_command = (
                 MAX_ARGUMENT_CHAR_COUNT - 2) // chars_per_led
