@@ -1,3 +1,8 @@
+## 0.6.7 (2021/07/19)
+
+ * Minimize occurance of spurious failures upon opening the LED boards for the
+   first time.
+
 ## 0.6.6 (2021/07/15)
 
  * Ensured that `color` property has a maximum value of 255.0 for all three color channels.
