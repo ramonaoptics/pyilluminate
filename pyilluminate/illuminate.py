@@ -439,6 +439,33 @@ class Illuminate:
         if not self.serial.isOpen():
             self._find_port_number()
             self._lock_acquire()
+            # 2021/07/19: Mark
+            # For some reason, we seem to be hitting problems when we try
+            # to open the serial board for the first time.
+            # They manifest themselves as decode errors in the json string
+            # because the "reboot" command seems to return its status out
+            # of order???
+            # Our previous tip has been for the end user to
+            # "ignore" the first failure, and to attempt to open the
+            # LED board a second time.
+            #
+            # Therefore, we take it upon ourselves attempt to do the open
+            # sequence twice
+
+            # Attempt to open the serial board
+            try:
+                self._open()
+            except Exception as e:
+                pass
+
+            # Check to see if it worked or not.
+            if self.serial.isOpen():
+                return
+
+            # Sleep to allow things to calm down???
+            sleep(0.25)
+
+            # Try again, but this time fail if it didn't work
             try:
                 self._open()
             except Exception as e:
@@ -755,7 +782,7 @@ class Illuminate:
     def reboot(self):
         """Run setup routine again, for resetting LED array."""
         # This just returns nothing important
-        return self.ask('reboot')
+        self.ask('reboot')
 
     @property
     def version(self) -> str:
