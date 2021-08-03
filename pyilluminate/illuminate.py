@@ -456,7 +456,7 @@ class Illuminate:
             # Attempt to open the serial board
             try:
                 self._open()
-            except Exception as e:
+            except Exception:
                 pass
 
             # Check to see if it worked or not.
