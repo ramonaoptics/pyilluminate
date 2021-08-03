@@ -455,7 +455,7 @@ class Illuminate:
             # Attempt to open the serial board
             try:
                 self._open()
-            except Exception as e:
+            except Exception:
                 pass
 
             # Check to see if it worked or not.
@@ -913,6 +913,22 @@ class Illuminate:
         # Cache the color for future use
         self._color = c
         # man, mypy is annoying.... i can't get typing for this one to work
+
+    @property
+    def color_850_ir(self):
+        return self.color[2]
+
+    @color_850_ir.setter
+    def color_850_ir(self, value):
+        self.color = (0, 0, value)
+
+    @property
+    def color_940_ir(self):
+        return sum(self.color[:2]) / 2
+
+    @color_940_ir.setter
+    def color_940_ir(self, value):
+        self.color = (value, value, 0)
 
     @property
     def maximum_current(self):
