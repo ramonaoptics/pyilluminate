@@ -918,13 +918,13 @@ class Illuminate:
     @property
     def colour(self) -> None:
         raise AttributeError(
-            "The ``colour`` attribute doesn't exist. Did you mean `color`."
+            "The ``colour`` attribute doesn't exist. Did you mean ``color``?"
         )
 
     @colour.setter
     def colour(self, c: Union[float, Iterable[float]]) -> None:
         raise AttributeError(
-            "The ``colour`` attribute doesn't exist. Did you mean `color`."
+            "The ``colour`` attribute doesn't exist. Did you mean ``color``?"
         )
 
     @property
