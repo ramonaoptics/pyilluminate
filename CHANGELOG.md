@@ -1,3 +1,7 @@
+## 0.6.8 (2021/08/03)
+
+ * Add an error when users try to access `colour` property instead of `color`.
+
 ## 0.6.7 (2021/07/19)
 
  * Minimize occurance of spurious failures upon opening the LED boards for the
