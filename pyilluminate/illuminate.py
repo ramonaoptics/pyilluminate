@@ -914,6 +914,19 @@ class Illuminate:
         self._color = c
         # man, mypy is annoying.... i can't get typing for this one to work
 
+    # for our friends that speak The Queen's English
+    @property
+    def colour(self) -> None:
+        raise AttributeError(
+            "The ``colour`` attribute doesn't exist. Did you mean `color`."
+        )
+
+    @colour.setter
+    def colour(self, c: Union[float, Iterable[float]]) -> None:
+        raise AttributeError(
+            "The ``colour`` attribute doesn't exist. Did you mean `color`."
+        )
+
     @property
     def maximum_current(self):
         return self._maximum_current
