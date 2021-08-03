@@ -1281,7 +1281,7 @@ class Illuminate:
         self.ask('ssbd.' + str(bitdepth))
         self._sequence_bit_depth = bitdepth
 
-    def find_max_brightness(self, num_leds, color_ratio=(1, 1, 1)):
+    def find_max_brightness(self, num_leds, color_ratio=None):
         """Calculate the maximum brightness for each color channel of an LED
         that won't exceed the TLC's internal current limit.
 
@@ -1299,6 +1299,9 @@ class Illuminate:
             The maximum scaled brightness for each color channel.
         """
         uint16_max = 65535
+
+        if color_ratio is None:
+            color_ratio = self.color
         color_ratio = np.asarray(color_ratio)
         color_ratio = color_ratio / np.sum(color_ratio)
 

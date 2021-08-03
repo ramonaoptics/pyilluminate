@@ -29,7 +29,7 @@ def test_low_value(light):
 
 
 def test_high_value(light):
-    max_brightness = light.find_max_brightness(655)
+    max_brightness = light.find_max_brightness(655, color_ratio=(1, 1, 1))
     goal_brightness = (
         51.90839694656488,
         51.90839694656488,
@@ -48,4 +48,13 @@ def test_ratios(light):
     assert_array_almost_equal(max_brightness, goal_brightness, decimal=5)
 
     max_brightness = light.find_max_brightness(655, (6, 4, 2))
+    assert_array_almost_equal(max_brightness, goal_brightness, decimal=5)
+
+    light.color = (3, 2, 1)
+    max_brightness = light.find_max_brightness(655)
+    goal_brightness = (
+        77.86259541984732,
+        51.90839694656488,
+        25.95419847328244,
+    )
     assert_array_almost_equal(max_brightness, goal_brightness, decimal=5)
