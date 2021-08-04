@@ -264,7 +264,6 @@ class Illuminate:
         self._led_state = None
         self._led_cache = []
         self._maximum_current = maximum_current
-        self._led_current_amps = None
 
         # Create default values for device parameters
         self._color = (0, 0, 0)
@@ -751,9 +750,6 @@ class Illuminate:
     @property
     def led_current_amps(self):
         """Maximum current in amps per LED channel."""
-        if self._led_current_amps is not None:
-            return self._led_current_amps
-
         result = self._ask_list("getLedCurrentAmps")
         try:
             self._check_output(result)
@@ -761,7 +757,6 @@ class Illuminate:
         except NotImplementedError:
             # Version 1.20.6 has a new command for returning this value
             led_current_amps = 0.02
-        self._led_current_amps = led_current_amps
         return led_current_amps
 
     @property
