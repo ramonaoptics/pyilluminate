@@ -1,3 +1,7 @@
+## 0.6.8 (Not yet released)
+
+ * Changed default in ``Illuminate.find_max_brightness`` to use current color for the ratio.
+
 ## 0.6.7 (2021/07/19)
 
  * Minimize occurance of spurious failures upon opening the LED boards for the
