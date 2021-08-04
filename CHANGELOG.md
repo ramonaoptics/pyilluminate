@@ -1,6 +1,10 @@
-## 0.6.8 (Not yet released)
+## 0.6.9 (2021/08/04)
 
  * Changed default in ``Illuminate.find_max_brightness`` to use current color for the ratio.
+
+## 0.6.8 (2021/08/03)
+
+ * Add an error when users try to access `colour` property instead of `color`.
 
 ## 0.6.7 (2021/07/19)
 
