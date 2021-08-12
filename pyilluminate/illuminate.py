@@ -1135,6 +1135,27 @@ class Illuminate:
         raise NotImplementedError('Never tested')
         self.ask(f'uv.{number}')
 
+    def setMaxCurrentControl(self, mc: int) -> None:
+
+        if not 0 <= mc <= 7:
+            raise ValueError("MC is out of range (0-7)")
+
+        self.ask(f"smcc.{mc}")
+
+    def setDotCorrection(self, dc: int) -> None:
+
+        if not 0 <= dc <= 127:
+            raise ValueError("DC is out of range (0-127)")
+
+        self.ask(f"sdc.{dc}")
+
+    def setBrightnessControl(self, bc: int) -> None:
+
+        if not 0 <= bc <= 127:
+            raise ValueError("BC is out of range (0-127)")
+
+        self.ask(f"sbc.{bc}")
+
     def _scan(self, command: str, delay: Optional[float]):
         """Send generic scan command.
 
