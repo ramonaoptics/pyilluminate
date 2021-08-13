@@ -1148,26 +1148,35 @@ class Illuminate:
         raise NotImplementedError('Never tested')
         self.ask(f'uv.{number}')
 
-    def setMaxCurrentControl(self, mc: int) -> None:
+    def setMaxCurrentControl(self, mc: Union[int, Iterable[int]]) -> None:
 
-        if not 0 <= mc <= 7:
+        if not isinstance(mc, collections.abc.Iterable):
+            mc = (mc, mc, mc)
+
+        if any(val < 0 or val > 7 for val in mc):
             raise ValueError("MC is out of range (0-7)")
 
-        self.ask(f"smcc.{mc}")
+        self.ask(f"smcc.{mc[0]}.{mc[1]}.{mc[2]}")
 
-    def setDotCorrection(self, dc: int) -> None:
+    def setDotCorrection(self, dc: Union[int, Iterable[int]]) -> None:
 
-        if not 0 <= dc <= 127:
+        if not isinstance(dc, collections.abc.Iterable):
+            dc = (dc, dc, dc)
+
+        if any(val < 0 or val > 127 for val in dc):
             raise ValueError("DC is out of range (0-127)")
 
-        self.ask(f"sdc.{dc}")
+        self.ask(f"sdc.{dc[0]}.{dc[1]}.{dc[2]}")
 
-    def setBrightnessControl(self, bc: int) -> None:
+    def setBrightnessControl(self, bc: Union[int, Iterable[int]]) -> None:
 
-        if not 0 <= bc <= 127:
+        if not isinstance(bc, collections.abc.Iterable):
+            bc = (bc, bc, bc)
+
+        if any(val < 0 or val > 127 for val in bc):
             raise ValueError("BC is out of range (0-127)")
 
-        self.ask(f"sbc.{bc}")
+        self.ask(f"sbc.{bc[0]}.{bc[1]}.{bc[2]}")
 
     def _scan(self, command: str, delay: Optional[float]):
         """Send generic scan command.
