@@ -148,6 +148,8 @@ class Illuminate:
     _known_serial_numbers = known_serial_numbers
     _known_mac_addresses = known_mac_addresses
 
+    MAX_CURRENT_VALUES = [3.2, 8, 11.2, 15.9, 19.1, 23.9, 27.1, 31.9]
+
     @staticmethod
     def find(serial_numbers=None):
         """Find all the serial ports that are associated with Illuminate.
@@ -267,6 +269,9 @@ class Illuminate:
 
         # Create default values for device parameters
         self._color = (0, 0, 0)
+        self._mc = (4, 4, 4)  # max current control
+        self._dc = (127, 127, 127)  # dot correction
+        self._bc = (127, 127, 127)  # brightness control
         self._mac_address = ""
         self._interface_bit_depth = 8
         if port is not None and serial_number is None:
@@ -1148,7 +1153,7 @@ class Illuminate:
         raise NotImplementedError('Never tested')
         self.ask(f'uv.{number}')
 
-    def setMaxCurrentControl(self, mc: Union[int, Iterable[int]]) -> None:
+    def _set_mc(self, mc: Union[int, Iterable[int]]) -> None:
 
         if not isinstance(mc, collections.abc.Iterable):
             mc = (mc, mc, mc)
@@ -1157,8 +1162,9 @@ class Illuminate:
             raise ValueError("MC is out of range (0-7)")
 
         self.ask(f"smcc.{mc[0]}.{mc[1]}.{mc[2]}")
+        self._mc = mc
 
-    def setDotCorrection(self, dc: Union[int, Iterable[int]]) -> None:
+    def _set_dc(self, dc: Union[int, Iterable[int]]) -> None:
 
         if not isinstance(dc, collections.abc.Iterable):
             dc = (dc, dc, dc)
@@ -1167,8 +1173,9 @@ class Illuminate:
             raise ValueError("DC is out of range (0-127)")
 
         self.ask(f"sdc.{dc[0]}.{dc[1]}.{dc[2]}")
+        self._dc = dc
 
-    def setBrightnessControl(self, bc: Union[int, Iterable[int]]) -> None:
+    def _set_bc(self, bc: Union[int, Iterable[int]]) -> None:
 
         if not isinstance(bc, collections.abc.Iterable):
             bc = (bc, bc, bc)
@@ -1177,6 +1184,64 @@ class Illuminate:
             raise ValueError("BC is out of range (0-127)")
 
         self.ask(f"sbc.{bc[0]}.{bc[1]}.{bc[2]}")
+        self._bc = bc
+
+    def default_brightness(self) -> None:
+
+        color = (257, 257, 257) # TODO: dont hardcode this
+        self.ask(f"sc.{color[0]}.{color[1]}.{color[2]}")
+        self._color = color
+        self._set_mc(4)
+        self._set_bc(127)
+
+    @property
+    def output_current(self) -> Iterable[float]:
+
+        # TODO: don't hardcode 65535
+        return [self._color[i] / 65535 *
+                Illuminate.MAX_CURRENT_VALUES[self._mc[i]] *
+                (0.1 + 0.9 * self._bc[i] / 127) for i in range(3)]
+
+    @output_current.setter
+    def output_current(self, current: Union[int, Iterable[int]]) -> None:
+
+        # current given in mA
+
+        if not isinstance(current, collections.abc.Iterable):
+            current = (current, current, current)
+
+        if any(0.32 > val > 10 for val in current):
+            raise ValueError("Currents should not exceed 10mA.")
+
+        # TODO: dont hardcode 65535
+        color = list(map(lambda c: 65535 if c else 0, current))
+
+        mc = [-1, -1, -1]
+        bc = [-1, -1, -1]
+
+        for i, c in enumerate(current):
+            if c > 0:
+                if c <= 3.2:
+                    mc[i] = 0
+                    bc[i] = self._get_bc(3.2, c)
+                elif c <= 8:
+                    mc[i] = 1
+                    bc[i] = self._get_bc(8, c)
+                else:
+                    mc[i] = 2
+                    bc[i] = self._get_bc(11.2, c)
+
+        mc = [mc[i] if mc[i] >= 0 else self._mc[i] for i in range(3)]
+        bc = [bc[i] if bc[i] >= 0 else self._bc[i] for i in range(3)]
+        self._set_mc(mc)
+        self._set_bc(bc)
+        self.ask(f'sc.{color[0]}.{color[1]}.{color[2]}')
+        self._color = color
+        # TODO: change colour?
+
+    def _get_bc(self, mc: float, current: float) -> int:
+
+        return round(((current / mc) - 0.1) * 127 / 0.9)
 
     def _scan(self, command: str, delay: Optional[float]):
         """Send generic scan command.
