@@ -893,8 +893,7 @@ class Illuminate:
         blue
             Integer value for the blue pixels.
         """
-        user_color = tuple(float(i / self._scale_factor) for i in self._color)
-        return user_color
+        return self._user_color
 
     @color.setter
     def color(self, c: Union[float, Iterable[float]]):
@@ -914,9 +913,24 @@ class Illuminate:
                  " exceeded. Requested color clipped to"
                  f" {user_color}", stacklevel=2)
 
-        self.ask(f'sc.{c[0]}.{c[1]}.{c[2]}')
+        # TODO: find better way to set default dc
+        # this is a super hacky and unpredictable way to control max brightness
+        # since this isnt included in any current calculations
+        if any(self._dc):
+            self._set_dc(0)
+
+        # calculate theoretical current of color based on default analog brightness settings
+        # color channel needs to be at least 5 to register above minimum current of 0.32mA
+        output_current = [val / 65536 * 19.1 for val in c]
+        output_current = list(map(lambda c: min(max(0.32, c), 10) if c else 0, output_current))
+
         # Cache the color for future use
         self._color = c
+        self._user_color = tuple(float(i / self._scale_factor) for i in self._color)
+
+        # will automatically switch to analog controls
+        self.output_current = output_current
+
         # man, mypy is annoying.... i can't get typing for this one to work
 
     # for our friends that speak The Queen's English
@@ -1210,8 +1224,9 @@ class Illuminate:
         if not isinstance(current, collections.abc.Iterable):
             current = (current, current, current)
 
-        if any(0.32 > val > 10 for val in current):
-            raise ValueError("Currents should not exceed 10mA.")
+        if any(val and (val < 0.32 or val > 10) for val in current):
+            print(current)
+            raise ValueError("Currents should not exceed 10mA or be below 0.32mA.")
 
         # TODO: dont hardcode 65535
         color = list(map(lambda c: 65535 if c else 0, current))
