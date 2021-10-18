@@ -2,7 +2,7 @@ import json
 import re
 from time import sleep
 from warnings import warn
-from typing import List, Union, Optional, Iterable, Tuple
+from typing import List, Union, Optional, Iterable, Tuple, Dict
 import collections
 from distutils.version import LooseVersion
 
@@ -267,11 +267,14 @@ class Illuminate:
         self._led_cache = []
         self._maximum_current = maximum_current
 
-        # Create default values for device parameters
-        self._color = (0, 0, 0)
-        self._mc = (4, 4, 4)  # max current control
-        self._dc = (127, 127, 127)  # dot correction
-        self._bc = (127, 127, 127)  # brightness control
+        self._mc_bit_depth = 3
+        self._bc_bit_depth = 7
+        self._dc_bit_depth = 7
+        self._gs_bit_depth = 16
+        self._default_mc = (4, 4, 4)
+        self._default_bc = (127, 127, 127)
+        self._default_dc = (127, 127, 127)
+
         self._mac_address = ""
         self._interface_bit_depth = 8
         if port is not None and serial_number is None:
@@ -570,11 +573,18 @@ class Illuminate:
                     ((1 << self._precision) - 1)
                 )
 
+        # Create default values for device parameters
         # Set the brightness low so we can live
-        if self._precision == 'float':
-            self.brightness = self.color_minimum_increment
-        else:
-            self.brightness = 1
+        self._color = (1.0, 1.0, 1.0)
+        self._mc = (4, 4, 4)   # max current control
+        self._bc = (127, 127, 127)   # brightness control
+        self._dc = (127, 127, 127)   # dot correction
+        # grayscale
+        self._gs = [int(val * self._scale_factor) for val in self._color]
+        self.analog_brightness_settings = (self._mc,
+                                           self._bc,
+                                           self._dc,
+                                           self._gs)
 
     def __del__(self):
         self.close()
@@ -879,6 +889,106 @@ class Illuminate:
         self.color = (b,) * 3
 
     @property
+    def analog_brightness_settings(self) -> Dict[str, Tuple[int, int, int]]:
+
+        analog_brightness_settings = {}
+        analog_brightness_settings["MC"] = self._mc  # max current
+        analog_brightness_settings["BC"] = self._bc  # brighness control
+        analog_brightness_settings["DC"] = self._dc  # dot corrections
+        analog_brightness_settings["GS"] = self._gs  # grayscale
+
+        return analog_brightness_settings
+
+    @analog_brightness_settings.setter
+    def analog_brightness_settings(self, settings: Iterable[
+                                   Union[int, Iterable[int]]]) -> None:
+
+        # setting MC, BC, and DC to 0 will not turn that LED off
+        # set GS to 0 for each color channel that should be off
+
+        if len(settings) != 4:
+            raise ValueError("Must pass one argument containing \
+                             MC, BC, DC, and GS data")
+
+        mc, bc, dc, gs = settings  # order of arguments
+
+        if not isinstance(mc, collections.abc.Iterable):
+            mc = (mc, mc, mc)
+        if not isinstance(bc, collections.abc.Iterable):
+            bc = (bc, bc, bc)
+        if not isinstance(dc, collections.abc.Iterable):
+            dc = (dc, dc, dc)
+        if not isinstance(gs, collections.abc.Iterable):
+            gs = (gs, gs, gs)
+
+        if any(val < 0 or val > 2**self._mc_bit_depth - 1 for val in mc):
+            raise ValueError(f"MC is out of range \
+                             (0-{2**self._mc_bit_depth - 1})")
+        if any(val < 0 or val > 2**self._bc_bit_depth - 1 for val in bc):
+            raise ValueError(f"BC is out of range \
+                             (0-{2**self._bc_bit_depth - 1})")
+        if any(val < 0 or val > 2**self._dc_bit_depth - 1 for val in dc):
+            raise ValueError(f"DC is out of range \
+                             (0-{2**self._dc_bit_depth - 1})")
+        if any(val < 0 or val > 2**self._gs_bit_depth - 1 for val in gs):
+            raise ValueError(f"GS is out of range \
+                             (0-{2**self._gs_bit_depth - 1})")
+
+        self.ask(f"sc.{gs[0]}.{gs[1]}.{gs[2]}")
+        self.ask(f"sab.{mc[0]}.{mc[1]}.{mc[2]}"
+                 f".{bc[0]}.{bc[1]}.{bc[2]}"
+                 f".{dc[0]}.{dc[1]}.{dc[2]}")
+        self._mc = mc
+        self._bc = bc
+        self._dc = dc
+        self._gs = gs
+
+    @property
+    def output_current(self) -> Iterable[float]:
+
+        return [self._gs[i] / self._gs_bit_depth *
+                Illuminate.MAX_CURRENT_VALUES[self._mc[i]] *
+                (0.262 + 0.738 * self._dc[i] / self._dc_bit_depth) *
+                (0.1 + 0.9 * self._bc[i] / self._bc_bit_depth)
+                for i in range(3)]
+
+    @output_current.setter
+    def output_current(self, current: Union[int, Iterable[int]]) -> None:
+
+        # current given in mA
+
+        if not isinstance(current, collections.abc.Iterable):
+            current = (current, current, current)
+
+        if any(val and (val < 0.32 or val > 10) for val in current):
+            raise ValueError("Currents should not exceed 10mA \
+                              or be below 0.32mA.")
+
+        gs = list(map(lambda c: 2 ** self._interface_bit_depth - 1 if c
+                      else 0, current))
+        mc, bc = self._mc, self._bc
+
+        # choose the lowest necessary MC values
+        # then choose corresponding BC value
+        for i, c in enumerate(current):
+            if c > 0:
+                if c <= 3.2:
+                    mc[i] = 0
+                    bc[i] = self._get_bc_for_current(3.2, c)
+                elif c <= 8:
+                    mc[i] = 1
+                    bc[i] = self._get_bc_for_current(8, c)
+                else:
+                    mc[i] = 2
+                    bc[i] = self._get_bc_for_current(11.2, c)
+
+        self.analog_brightness_settings = (mc, bc, self._dc, gs)
+
+    def _get_bc_for_current(self, mc: float, current: float) -> int:
+
+        return round(((current / mc) - 0.1) * 127 / 0.9)
+
+    @property
     def color(self) -> Tuple[float, ...]:
         """LED array color.
 
@@ -893,7 +1003,7 @@ class Illuminate:
         blue
             Integer value for the blue pixels.
         """
-        return self._user_color
+        return list(map(float, self._color))
 
     @color.setter
     def color(self, c: Union[float, Iterable[float]]):
@@ -903,35 +1013,26 @@ class Illuminate:
 
         # Downcast to int for safety
         max_color_int = (1 << self._interface_bit_depth) - 1
-        c = tuple(int(i * self._scale_factor) for i in c)
+        gs = tuple(int(i * self._scale_factor) for i in c)
 
         # Clips color channel to approximately 255 if user input exceeds that
-        if any(i > max_color_int for i in c):
-            c = tuple(min(i, max_color_int) for i in c)
-            user_color = tuple(float(i / self._scale_factor) for i in c)
+        if any(i > max_color_int for i in gs):
+            gs = tuple(min(i, max_color_int) for i in gs)
+            user_color = tuple(float(i / self._scale_factor) for i in gs)
             warn(f"Maximum color ({self.color_maximum_value})"
                  " exceeded. Requested color clipped to"
                  f" {user_color}", stacklevel=2)
 
-        # TODO: find better way to set default dc
-        # this is a super hacky and unpredictable way to control max brightness
-        # since this isnt included in any current calculations
-        if any(self._dc):
-            self._set_dc(0)
-
-        # calculate theoretical current of color based on default analog brightness settings
-        # color channel needs to be at least 5 to register above minimum current of 0.32mA
-        output_current = [val / 65536 * 19.1 for val in c]
-        output_current = list(map(lambda c: min(max(0.32, c), 10) if c else 0, output_current))
-
-        # Cache the color for future use
-        self._color = c
-        self._user_color = tuple(float(i / self._scale_factor) for i in self._color)
-
-        # will automatically switch to analog controls
-        self.output_current = output_current
-
-        # man, mypy is annoying.... i can't get typing for this one to work
+        if self._mc != self._default_mc or \
+           self._bc != self._default_bc or \
+           self._dc != self._default_dc:
+            self.analog_brightness_settings = (self._default_mc,
+                                               self._default_bc,
+                                               self._default_dc,
+                                               gs)
+        else:
+            self.ask(f"sc.{gs[0]}.{gs[1]}.{gs[2]}")
+            self._color = c
 
     # for our friends that speak The Queen's English
     @property
@@ -1166,97 +1267,6 @@ class Illuminate:
         """Illuminate UV LED."""
         raise NotImplementedError('Never tested')
         self.ask(f'uv.{number}')
-
-    def _set_mc(self, mc: Union[int, Iterable[int]]) -> None:
-
-        if not isinstance(mc, collections.abc.Iterable):
-            mc = (mc, mc, mc)
-
-        if any(val < 0 or val > 7 for val in mc):
-            raise ValueError("MC is out of range (0-7)")
-
-        self.ask(f"smcc.{mc[0]}.{mc[1]}.{mc[2]}")
-        self._mc = mc
-
-    def _set_dc(self, dc: Union[int, Iterable[int]]) -> None:
-
-        if not isinstance(dc, collections.abc.Iterable):
-            dc = (dc, dc, dc)
-
-        if any(val < 0 or val > 127 for val in dc):
-            raise ValueError("DC is out of range (0-127)")
-
-        self.ask(f"sdc.{dc[0]}.{dc[1]}.{dc[2]}")
-        self._dc = dc
-
-    def _set_bc(self, bc: Union[int, Iterable[int]]) -> None:
-
-        if not isinstance(bc, collections.abc.Iterable):
-            bc = (bc, bc, bc)
-
-        if any(val < 0 or val > 127 for val in bc):
-            raise ValueError("BC is out of range (0-127)")
-
-        self.ask(f"sbc.{bc[0]}.{bc[1]}.{bc[2]}")
-        self._bc = bc
-
-    def default_brightness(self) -> None:
-
-        color = (257, 257, 257) # TODO: dont hardcode this
-        self.ask(f"sc.{color[0]}.{color[1]}.{color[2]}")
-        self._color = color
-        self._set_mc(4)
-        self._set_bc(127)
-
-    @property
-    def output_current(self) -> Iterable[float]:
-
-        # TODO: don't hardcode 65535
-        return [self._color[i] / 65535 *
-                Illuminate.MAX_CURRENT_VALUES[self._mc[i]] *
-                (0.1 + 0.9 * self._bc[i] / 127) for i in range(3)]
-
-    @output_current.setter
-    def output_current(self, current: Union[int, Iterable[int]]) -> None:
-
-        # current given in mA
-
-        if not isinstance(current, collections.abc.Iterable):
-            current = (current, current, current)
-
-        if any(val and (val < 0.32 or val > 10) for val in current):
-            print(current)
-            raise ValueError("Currents should not exceed 10mA or be below 0.32mA.")
-
-        # TODO: dont hardcode 65535
-        color = list(map(lambda c: 65535 if c else 0, current))
-
-        mc = [-1, -1, -1]
-        bc = [-1, -1, -1]
-
-        for i, c in enumerate(current):
-            if c > 0:
-                if c <= 3.2:
-                    mc[i] = 0
-                    bc[i] = self._get_bc(3.2, c)
-                elif c <= 8:
-                    mc[i] = 1
-                    bc[i] = self._get_bc(8, c)
-                else:
-                    mc[i] = 2
-                    bc[i] = self._get_bc(11.2, c)
-
-        mc = [mc[i] if mc[i] >= 0 else self._mc[i] for i in range(3)]
-        bc = [bc[i] if bc[i] >= 0 else self._bc[i] for i in range(3)]
-        self._set_mc(mc)
-        self._set_bc(bc)
-        self.ask(f'sc.{color[0]}.{color[1]}.{color[2]}')
-        self._color = color
-        # TODO: change colour?
-
-    def _get_bc(self, mc: float, current: float) -> int:
-
-        return round(((current / mc) - 0.1) * 127 / 0.9)
 
     def _scan(self, command: str, delay: Optional[float]):
         """Send generic scan command.
