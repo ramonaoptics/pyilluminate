@@ -946,10 +946,10 @@ class Illuminate:
     @property
     def output_current(self) -> Iterable[float]:
 
-        return [self._gs[i] / self._gs_bit_depth *
+        return [self._gs[i] / (2**self._gs_bit_depth - 1) *
                 Illuminate.MAX_CURRENT_VALUES[self._mc[i]] *
-                (0.262 + 0.738 * self._dc[i] / self._dc_bit_depth) *
-                (0.1 + 0.9 * self._bc[i] / self._bc_bit_depth)
+                (0.262 + 0.738 * self._dc[i] / (2**self._dc_bit_depth - 1)) *
+                (0.1 + 0.9 * self._bc[i] / (2**self._bc_bit_depth - 1))
                 for i in range(3)]
 
     @output_current.setter
