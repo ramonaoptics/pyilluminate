@@ -267,13 +267,13 @@ class Illuminate:
         self._led_cache = []
         self._maximum_current = maximum_current
 
-        self._mc_bit_depth = 3
-        self._bc_bit_depth = 7
-        self._dc_bit_depth = 7
-        self._gs_bit_depth = 16
-        self._default_mc = (4, 4, 4)
-        self._default_bc = (127, 127, 127)
-        self._default_dc = (127, 127, 127)
+        self._analog_max_current_bit_depth = 3
+        self._analog_brightness_control_bit_depth = 7
+        self._analog_dot_correction_bit_depth = 7
+        self._analog_grayscale_bit_depth = 16
+        self._default_analog_max_current = (4, 4, 4)
+        self._default_analog_brightness_control = (127, 127, 127)
+        self._default_analog_dot_correction = (127, 127, 127)
 
         self._mac_address = ""
         self._interface_bit_depth = 8
@@ -576,15 +576,15 @@ class Illuminate:
         # Create default values for device parameters
         # Set the brightness low so we can live
         self._color = (1.0, 1.0, 1.0)
-        self._mc = (4, 4, 4)   # max current control
-        self._bc = (127, 127, 127)   # brightness control
-        self._dc = (127, 127, 127)   # dot correction
-        # grayscale
-        self._gs = [int(val * self._scale_factor) for val in self._color]
-        self.analog_brightness_settings = (self._mc,
-                                           self._bc,
-                                           self._dc,
-                                           self._gs)
+        self._analog_max_current = (4, 4, 4)
+        self._analog_brightness_control = (127, 127, 127)
+        self._analog_dot_correction = (127, 127, 127)
+        self._analog_grayscale = [int(val * self._scale_factor)
+                                  for val in self._color]
+        self.analog_brightness_settings = (self._analog_max_current,
+                                           self._analog_brightness_control,
+                                           self._analog_dot_correction,
+                                           self._analog_grayscale)
 
     def __del__(self):
         self.close()
@@ -892,10 +892,12 @@ class Illuminate:
     def analog_brightness_settings(self) -> Dict[str, Tuple[int, int, int]]:
 
         analog_brightness_settings = {}
-        analog_brightness_settings["MC"] = self._mc  # max current
-        analog_brightness_settings["BC"] = self._bc  # brighness control
-        analog_brightness_settings["DC"] = self._dc  # dot corrections
-        analog_brightness_settings["GS"] = self._gs  # grayscale
+        analog_brightness_settings["max_current"] = self._analog_max_current
+        analog_brightness_settings[
+            "brightness_control"] = self._analog_brightness_control
+        analog_brightness_settings[
+            "dot_correction"] = self._analog_dot_correction
+        analog_brightness_settings["grayscale"] = tuple(self._analog_grayscale)
 
         return analog_brightness_settings
 
@@ -921,35 +923,43 @@ class Illuminate:
         if not isinstance(gs, collections.abc.Iterable):
             gs = (gs, gs, gs)
 
-        if any(val < 0 or val > 2**self._mc_bit_depth - 1 for val in mc):
+        if any(val < 0 or val > 2**self._analog_max_current_bit_depth - 1
+           for val in mc):
             raise ValueError(f"MC is out of range \
-                             (0-{2**self._mc_bit_depth - 1})")
-        if any(val < 0 or val > 2**self._bc_bit_depth - 1 for val in bc):
+                (0-{2**self._analog_max_current_bit_depth - 1})")
+        if any(val < 0 or
+           val > 2**self._analog_brightness_control_bit_depth - 1
+           for val in bc):
             raise ValueError(f"BC is out of range \
-                             (0-{2**self._bc_bit_depth - 1})")
-        if any(val < 0 or val > 2**self._dc_bit_depth - 1 for val in dc):
+                (0-{2**self._analog_brightness_control_bit_depth - 1})")
+        if any(val < 0 or val > 2**self._analog_dot_correction_bit_depth - 1
+           for val in dc):
             raise ValueError(f"DC is out of range \
-                             (0-{2**self._dc_bit_depth - 1})")
-        if any(val < 0 or val > 2**self._gs_bit_depth - 1 for val in gs):
+                (0-{2**self._analog_dot_correction_bit_depth - 1})")
+        if any(val < 0 or val > 2**self._analog_grayscale_bit_depth - 1
+           for val in gs):
             raise ValueError(f"GS is out of range \
-                             (0-{2**self._gs_bit_depth - 1})")
+                (0-{2**self._analog_grayscale_bit_depth - 1})")
 
         self.ask(f"sc.{gs[0]}.{gs[1]}.{gs[2]}")
         self.ask(f"sab.{mc[0]}.{mc[1]}.{mc[2]}"
                  f".{bc[0]}.{bc[1]}.{bc[2]}"
                  f".{dc[0]}.{dc[1]}.{dc[2]}")
-        self._mc = mc
-        self._bc = bc
-        self._dc = dc
-        self._gs = gs
+        self._analog_max_current = mc
+        self._analog_brightness_control = bc
+        self._analog_dot_correction = dc
+        self._analog_grayscale = gs
 
     @property
     def output_current(self) -> Iterable[float]:
 
-        return [self._gs[i] / (2**self._gs_bit_depth - 1) *
-                Illuminate.MAX_CURRENT_VALUES[self._mc[i]] *
-                (0.262 + 0.738 * self._dc[i] / (2**self._dc_bit_depth - 1)) *
-                (0.1 + 0.9 * self._bc[i] / (2**self._bc_bit_depth - 1))
+        return [self._analog_grayscale[i] /
+                (2**self._analog_grayscale_bit_depth - 1) *
+                Illuminate.MAX_CURRENT_VALUES[self._analog_max_current[i]] *
+                (0.262 + 0.738 * self._analog_dot_correction[i] /
+                (2**self._analog_dot_correction_bit_depth - 1)) *
+                (0.1 + 0.9 * self._analog_brightness_control[i] /
+                (2**self._analog_brightness_control_bit_depth - 1))
                 for i in range(3)]
 
     @output_current.setter
@@ -966,7 +976,7 @@ class Illuminate:
 
         gs = list(map(lambda c: 2 ** self._interface_bit_depth - 1 if c
                       else 0, current))
-        mc, bc = self._mc, self._bc
+        mc, bc = self._analog_max_current, self._analog_brightness_control
 
         # choose the lowest necessary MC values
         # then choose corresponding BC value
@@ -982,7 +992,10 @@ class Illuminate:
                     mc[i] = 2
                     bc[i] = self._get_bc_for_current(11.2, c)
 
-        self.analog_brightness_settings = (mc, bc, self._dc, gs)
+        self.analog_brightness_settings = (mc,
+                                           bc,
+                                           self._analog_dot_correction,
+                                           gs)
 
     def _get_bc_for_current(self, mc: float, current: float) -> int:
 
@@ -1023,13 +1036,16 @@ class Illuminate:
                  " exceeded. Requested color clipped to"
                  f" {user_color}", stacklevel=2)
 
-        if self._mc != self._default_mc or \
-           self._bc != self._default_bc or \
-           self._dc != self._default_dc:
-            self.analog_brightness_settings = (self._default_mc,
-                                               self._default_bc,
-                                               self._default_dc,
-                                               gs)
+        if self._analog_max_current != self._default_analog_max_current or \
+           self._analog_brightness_control != \
+           self._default_analog_brightness_control or \
+           self._analog_dot_correction != \
+           self._default_analog_dot_correction:
+            self.analog_brightness_settings = (
+                self._default_analog_max_current,
+                self._default_analog_brightness_control,
+                self._default_analog_dot_correction,
+                gs)
         else:
             self.ask(f"sc.{gs[0]}.{gs[1]}.{gs[2]}")
             self._color = c
