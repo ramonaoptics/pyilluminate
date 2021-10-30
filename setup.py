@@ -9,11 +9,11 @@ setup(
     author='Ramona Optics, Inc.',
     author_email='info@ramonaoptics.com',
     license='BSD',
-    python_requires='>=3.6',
+    python_requires='>=3.7',
     install_requires=[
         'pyserial',
+        'multiuserfilelock',
         'xarray',
-        'dataclasses; python_version<"3.7"',
     ],
     packages=find_packages(),
     cmdclass=versioneer.get_cmdclass(),
