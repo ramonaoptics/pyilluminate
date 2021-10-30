@@ -1,3 +1,7 @@
+## 0.6.10 (2021/10/30)
+
+ * Ensure compatibility with filelock 3.3.2. Requires multiuserfilelock package.
+
 ## 0.6.9 (2021/08/04)
 
  * Changed default in ``Illuminate.find_max_brightness`` to use current color for the ratio.
