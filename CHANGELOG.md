@@ -1,4 +1,4 @@
-## 0.6.10 (2021/10/30)
+## 0.6.11 (2021/10/30)
 
  * Ensure compatibility with filelock 3.3.2. Requires multiuserfilelock package.
 
