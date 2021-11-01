@@ -341,6 +341,7 @@ class Illuminate:
         parameters.update(loaded_parameters)
 
         self.N_leds = parameters['led_count']
+        self._N_drivers = parameters['tlc_chip_count']
         self._device_name = parameters['device_name']
         self._part_number = parameters['part_number']
         self._serial_number = parameters['serial_number']
@@ -349,7 +350,7 @@ class Illuminate:
         # self.color_channels
         self._sequence_bit_depth = parameters['bit_depth']
         self._mac_address = str(parameters['mac_address'])  # type: ignore
-
+        self._fuse_size_ma = parameters['fuse_size']
         self._interface_bit_depth = int(  # type: ignore
             parameters['interface_bit_depth'])  # type: ignore
 
@@ -576,15 +577,13 @@ class Illuminate:
         # Create default values for device parameters
         # Set the brightness low so we can live
         self._color = (1.0, 1.0, 1.0)
-        self._analog_max_current = (4, 4, 4)
-        self._analog_brightness_control = (127, 127, 127)
-        self._analog_dot_correction = (127, 127, 127)
         self._analog_grayscale = [int(val * self._scale_factor)
                                   for val in self._color]
-        self.analog_brightness_settings = (self._analog_max_current,
-                                           self._analog_brightness_control,
-                                           self._analog_dot_correction,
-                                           self._analog_grayscale)
+        self.analog_brightness_settings = (
+            self._default_analog_max_current,
+            self._default_analog_brightness_control,
+            self._default_analog_dot_correction,
+            self._analog_grayscale)
 
     def __del__(self):
         self.close()
@@ -889,15 +888,26 @@ class Illuminate:
         self.color = (b,) * 3
 
     @property
+    def using_default_brightness_settings(self) -> bool:
+        settings = self.analog_brightness_settings
+        is_using = settings["max_current"] == \
+            list(self._default_analog_max_current) and \
+            settings["brightness_control"] == \
+            list(self._default_analog_brightness_control) and \
+            settings["dot_correction"] == \
+            list(self._default_analog_dot_correction)
+
+        return is_using
+
+    @property
     def analog_brightness_settings(self) -> Dict[str, Tuple[int, int, int]]:
 
         analog_brightness_settings = {}
-        analog_brightness_settings["max_current"] = self._analog_max_current
-        analog_brightness_settings[
-            "brightness_control"] = self._analog_brightness_control
-        analog_brightness_settings[
-            "dot_correction"] = self._analog_dot_correction
-        analog_brightness_settings["grayscale"] = tuple(self._analog_grayscale)
+        s = list(map(int, self._ask_string("gab").split(',')[:-1]))
+        analog_brightness_settings["max_current"] = s[:3]
+        analog_brightness_settings["brightness_control"] = s[3:6]
+        analog_brightness_settings["dot_correction"] = s[6:9]
+        analog_brightness_settings["grayscale"] = list(self._analog_grayscale)
 
         return analog_brightness_settings
 
@@ -941,26 +951,29 @@ class Illuminate:
             raise ValueError(f"GS is out of range \
                 (0-{2**self._analog_grayscale_bit_depth - 1})")
 
-        self.ask(f"sc.{gs[0]}.{gs[1]}.{gs[2]}")
-        self.ask(f"sab.{mc[0]}.{mc[1]}.{mc[2]}"
-                 f".{bc[0]}.{bc[1]}.{bc[2]}"
-                 f".{dc[0]}.{dc[1]}.{dc[2]}")
-        self._analog_max_current = mc
-        self._analog_brightness_control = bc
-        self._analog_dot_correction = dc
-        self._analog_grayscale = gs
+        if self.using_default_brightness_settings:
+            self.clear()
+
+        s = list(map(float, self._ask_string(
+            f"sab.{gs[0]}.{gs[1]}.{gs[2]}"
+            f".{mc[0]}.{mc[1]}.{mc[2]}"
+            f".{bc[0]}.{bc[1]}.{bc[2]}"
+            f".{dc[0]}.{dc[1]}.{dc[2]}.").split('\n')[-1].split(',')))
+        if not s[0]:
+            self.clear()
+            raise ValueError(f"Requested current, {s[1]}mA"
+                             f", exceeds fuse value of {self._fuse_size_ma}mA")
+        else:
+            self._analog_grayscale = gs
 
     @property
     def output_current(self) -> Iterable[float]:
 
-        return [self._analog_grayscale[i] /
-                (2**self._analog_grayscale_bit_depth - 1) *
-                Illuminate.MAX_CURRENT_VALUES[self._analog_max_current[i]] *
-                (0.262 + 0.738 * self._analog_dot_correction[i] /
-                (2**self._analog_dot_correction_bit_depth - 1)) *
-                (0.1 + 0.9 * self._analog_brightness_control[i] /
-                (2**self._analog_brightness_control_bit_depth - 1))
-                for i in range(3)]
+        s = (f"glc.{self._analog_grayscale[0]}"
+             f".{self._analog_grayscale[1]}"
+             f".{self._analog_grayscale[2]}")
+        currents = list(map(float, self._ask_string(s).split(',')[:-1]))
+        return currents
 
     @output_current.setter
     def output_current(self, current: Union[int, Iterable[int]]) -> None:
@@ -970,36 +983,49 @@ class Illuminate:
         if not isinstance(current, collections.abc.Iterable):
             current = (current, current, current)
 
-        if any(val and (val < 0.32 or val > 10) for val in current):
-            raise ValueError("Currents should not exceed 10mA \
-                              or be below 0.32mA.")
+        min_mc = Illuminate.MAX_CURRENT_VALUES[0] * 0.262 * 0.1
+        max_mc = Illuminate.MAX_CURRENT_VALUES[-1] * 0.262
+        if any(val and (val < min_mc or val > max_mc) for val in current):
+            raise ValueError(f"Currents should not exceed {max_mc}mA"
+                             f" or be below {min_mc:.4f}mA.")
 
         gs = list(map(lambda c: 2 ** self._interface_bit_depth - 1 if c
                       else 0, current))
-        mc, bc = self._analog_max_current, self._analog_brightness_control
 
-        # choose the lowest necessary MC values
+        settings = self.analog_brightness_settings
+        mc = settings["max_current"]
+        bc = settings["brightness_control"]
+
+        # choose the lowest necessary MC values TODO: this causes color issues
         # then choose corresponding BC value
+        # assume Dot Correction is 0
         for i, c in enumerate(current):
             if c > 0:
-                if c <= 3.2:
-                    mc[i] = 0
-                    bc[i] = self._get_bc_for_current(3.2, c)
-                elif c <= 8:
-                    mc[i] = 1
-                    bc[i] = self._get_bc_for_current(8, c)
-                else:
-                    mc[i] = 2
-                    bc[i] = self._get_bc_for_current(11.2, c)
+                for mc_val in Illuminate.MAX_CURRENT_VALUES:
+                    if c <= mc_val * 0.262:  # use this factor since DC is 0
+                        mc[i] = Illuminate.MAX_CURRENT_VALUES.index(mc_val)
+                        bc[i] = self._get_bc_for_current(mc_val, c)
+                        break
 
-        self.analog_brightness_settings = (mc,
-                                           bc,
-                                           self._analog_dot_correction,
-                                           gs)
+        # Dot Correction is set to 0 to give more color variation
+        # High Dot Correction results in little change before overcurrent
+        if self.analog_brightness_settings["dot_correction"] == \
+           self._default_analog_dot_correction:
+            self.clear()
+        self.analog_brightness_settings = (mc, bc, 0, gs)
 
     def _get_bc_for_current(self, mc: float, current: float) -> int:
 
-        return round(((current / mc) - 0.1) * 127 / 0.9)
+        # Assumes Dot Correction is 0
+        return round(((current / (mc * 0.262)) - 0.1) * 127 / 0.9)
+
+    @property
+    def total_output_current(self) -> float:
+
+        s = (f"gtc.{self._analog_grayscale[0]}"
+             f".{self._analog_grayscale[1]}"
+             f".{self._analog_grayscale[2]}")
+        return float(self._ask_string(s))
 
     @property
     def color(self) -> Tuple[float, ...]:
@@ -1036,11 +1062,8 @@ class Illuminate:
                  " exceeded. Requested color clipped to"
                  f" {user_color}", stacklevel=2)
 
-        if self._analog_max_current != self._default_analog_max_current or \
-           self._analog_brightness_control != \
-           self._default_analog_brightness_control or \
-           self._analog_dot_correction != \
-           self._default_analog_dot_correction:
+        if not self.using_default_brightness_settings:
+            self.clear()
             self.analog_brightness_settings = (
                 self._default_analog_max_current,
                 self._default_analog_brightness_control,
@@ -1048,7 +1071,8 @@ class Illuminate:
                 gs)
         else:
             self.ask(f"sc.{gs[0]}.{gs[1]}.{gs[2]}")
-            self._color = c
+            self._analog_grayscale = gs
+        self._color = c
 
     # for our friends that speak The Queen's English
     @property
