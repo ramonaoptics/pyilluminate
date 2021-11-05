@@ -954,11 +954,12 @@ class Illuminate:
         if self.using_default_brightness_settings:
             self.clear()
 
+        self.ask(f"sc.{gs[0]}.{gs[1]}.{gs[2]}")
         s = list(map(float, self._ask_string(
-            f"sab.{gs[0]}.{gs[1]}.{gs[2]}"
-            f".{mc[0]}.{mc[1]}.{mc[2]}"
+            f"sab.{mc[0]}.{mc[1]}.{mc[2]}"
             f".{bc[0]}.{bc[1]}.{bc[2]}"
-            f".{dc[0]}.{dc[1]}.{dc[2]}.").split('\n')[-1].split(',')))
+            f".{dc[0]}.{dc[1]}.{dc[2]}."
+            f"{gs[0]}.{gs[1]}.{gs[2]}").split('\n')[-1].split(',')))
         if not s[0]:
             self.clear()
             raise ValueError(f"Requested current, {s[1]}mA"
