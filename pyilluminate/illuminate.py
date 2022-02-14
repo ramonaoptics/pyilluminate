@@ -674,6 +674,11 @@ class Illuminate:
             return ''
 
     @property
+    def led_current_amps(self):
+        """Maximum current in amps per LED channel."""
+        return 0.02
+
+    @property
     def mac_address(self) -> str:
         """MAC Address of the Teansy that drives the LED board."""
         return self._mac_address
