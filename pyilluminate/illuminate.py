@@ -1216,6 +1216,7 @@ class Illuminate:
     def find_max_brightness(self, num_leds, color_ratio=None):
         """Calculate the maximum brightness for each color channel of an LED
         that won't exceed the TLC's internal current limit.
+
         Parameters
         ----------
         num_leds: int
@@ -1223,6 +1224,7 @@ class Illuminate:
         color_ratio: (float, float, float)
             The required ratio for the brightness values
             of each color channel (r, g, b)
+
         Returns
         -------
         brightness: (float, float, float)
