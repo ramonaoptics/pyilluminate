@@ -676,14 +676,7 @@ class Illuminate:
     @property
     def led_current_amps(self):
         """Maximum current in amps per LED channel."""
-        result = self._ask_list("getLedCurrentAmps")
-        try:
-            self._check_output(result)
-            led_current_amps = float(result[0])
-        except NotImplementedError:
-            # Version 1.20.6 has a new command for returning this value
-            led_current_amps = 0.02
-        return led_current_amps
+        return 0.02
 
     @property
     def mac_address(self) -> str:
