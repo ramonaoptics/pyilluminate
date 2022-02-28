@@ -4,7 +4,7 @@ from time import sleep
 from warnings import warn
 from typing import List, Union, Optional, Iterable, Tuple
 import collections
-from distutils.version import LooseVersion
+from packaging.version import Version
 
 import xarray as xr
 
@@ -69,6 +69,32 @@ class Illuminate:
 
     VID_PID_s = [
         (0x16C0, 0x0483),
+    ]
+    __slots__ = [
+        '_use_lock',
+        '_lock',
+        'serial',
+        '_led_positions',
+        '_help',
+        '_led_state',
+        '_led_cache',
+        '_maximum_current',
+        '_color',
+        '_mac_address',
+        '_interface_bit_depth',
+        '_precision',
+        'serial_number',
+        'reboot_on_start',
+        'N_leds',
+        '_device_name',
+        '_part_number',
+        '_serial_number',
+        '_led_count',
+        '_sequence_bit_depth',
+        '_has_autoupdate',
+        '_autoclear',
+        '_autoupdate',
+        '_scale_factor'
     ]
     _known_device = known_devices
     _known_serial_numbers = known_serial_numbers
@@ -450,7 +476,8 @@ class Illuminate:
                       e.args)
             raise e
 
-        if LooseVersion(self.version) > '1.13':
+        version = Version(self.version)
+        if version > Version('1.13'):
             self._has_autoupdate = True
         else:
             self._has_autoupdate = False
@@ -461,7 +488,9 @@ class Illuminate:
         self.autoclear = True
         self.autoupdate = True
 
-        if LooseVersion(self.version) > '1.13':
+        if version > Version('1.13') and version < Version('1.21.0'):
+            # As of version 1.21.0, "brightness" is no longer used
+            # in Ramona Optics hardware
             # ALl boards that I have in my possension have been updated.
             # The command color changed in version 0.14 such that
             # each color would be multiplied by the value of brightness
@@ -493,9 +522,9 @@ class Illuminate:
 
         # Set the brightness low so we can live
         if self._precision == 'float':
-            self.brightness = self.color_minimum_increment
+            self.color = self.color_minimum_increment
         else:
-            self.brightness = 1
+            self.color = 1
 
     def __del__(self):
         self.close()
