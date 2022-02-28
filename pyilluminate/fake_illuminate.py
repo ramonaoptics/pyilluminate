@@ -5,6 +5,10 @@ import xarray as xr
 
 
 class FakeIlluminate(Illuminate):
+    __slots__ = [
+        # All slots have been declared in Illuminate
+    ]
+
     def __init__(self, *args, maximum_current=8, N_leds=377, **kwargs):
         """Basic fake illuminate device.
 
