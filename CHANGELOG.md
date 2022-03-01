@@ -1,8 +1,12 @@
-## 0.6.12 (2022/02/28)
+## 0.6.13 (2022/02/28)
 
  * Ensure compatibility with future versions of the firmware where the
    `setBrightness` command will be removed.
  * Add Python slots to help avoid typos when controlling the instrument.
+
+## 0.6.12 (2022/02/23)
+
+ * Removed unused current detection code.
 
 ## 0.6.11 (2021/10/30)
 
