@@ -1,4 +1,5 @@
 from pyilluminate.fake_illuminate import FakeIlluminate
+import pytest
 
 
 def test_defaults():
@@ -33,3 +34,11 @@ def test_fill_array():
     light.fill_array()
     assert tuple(light.color) == (85, 10, 1)
     assert set(light.led) == set(range(light.N_leds))
+
+def test_open_obvious_typo():
+    light = FakeIlluminate()
+    try:
+        with pytest.raises(AttributeError):
+            light.obvious_typo = False
+    finally:
+        light.close()

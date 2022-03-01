@@ -1,3 +1,9 @@
+## 0.6.12 (2022/02/28)
+
+ * Ensure compatibility with future versions of the firmware where the
+   `setBrightness` command will be removed.
+ * Add Python slots to help avoid typos when controlling the instrument.
+
 ## 0.6.11 (2021/10/30)
 
  * Ensure compatibility with filelock 3.3.2. Requires multiuserfilelock package.

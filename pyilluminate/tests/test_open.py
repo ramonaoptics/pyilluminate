@@ -21,7 +21,7 @@ def test_open():
     light.close()
 
 
-@pytest.mark.parametrize('serial_number', ['4916510', '4725300'])
+@pytest.mark.parametrize('serial_number', ['4916510', '4725300', '6691700'])
 def test_open_serial_number(serial_number):
     try:
         light = Illuminate(serial_number=serial_number)
@@ -33,7 +33,7 @@ def test_open_serial_number(serial_number):
     assert connected_serial_number == serial_number
 
 
-@pytest.mark.parametrize('serial_number', ['4916510', '4725300'])
+@pytest.mark.parametrize('serial_number', ['4916510', '4725300', '6691700'])
 def test_device_by_serial_number(serial_number):
     device_pairs = Illuminate._device_serial_number_pairs(
         serial_numbers=[serial_number])
@@ -42,3 +42,13 @@ def test_device_by_serial_number(serial_number):
     if len(device_pairs) == 0:
         pytest.skip('Device not connected')
     assert device_pairs[0][1] == serial_number
+
+
+@pytest.mark.parametrize('port', ports)
+def test_open_obvious_typo(port):
+    light = Illuminate(port=port)
+    try:
+        with pytest.raises(AttributeError):
+            light.obvious_typo = False
+    finally:
+        light.close()
