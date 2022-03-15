@@ -1,3 +1,8 @@
+## 0.6.14 (2022/03/15)
+
+ * Ensure that LEDs that are individually turned off are removed from the LED
+   list accessible through ``Illuminate.led``.
+
 ## 0.6.13 (2022/02/28)
 
  * Ensure compatibility with future versions of the firmware where the
