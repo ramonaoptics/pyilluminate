@@ -72,3 +72,25 @@ def test_fill_array(light):
     led_state_expected = np.zeros((light.N_leds, 3))
     led_state_expected[...] = np.asarray(color)
     assert_allclose(light.led_state.data, led_state_expected)
+
+
+def test_set_leds_to_zero(light):
+    color = (1, 2, 3)
+    expected_leds = []
+
+    assert expected_leds == light.led
+
+    light.color = color
+    light.led = [1, 2, 3]
+    expected_leds = [1, 2, 3]
+
+    assert expected_leds == light.led
+
+    light.autoclear = False
+    light.led = [3, 4]
+    assert [1, 2, 3, 4] == light.led
+
+    # Turn OFF some LEDs by setting the PWM to 0% duty cycle
+    light.color = 0
+    light.led = [2, 4, 6]
+    assert [1, 3] == light.led

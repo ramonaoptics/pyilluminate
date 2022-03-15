@@ -35,6 +35,7 @@ def test_fill_array():
     assert tuple(light.color) == (85, 10, 1)
     assert set(light.led) == set(range(light.N_leds))
 
+
 def test_open_obvious_typo():
     light = FakeIlluminate()
     try:
