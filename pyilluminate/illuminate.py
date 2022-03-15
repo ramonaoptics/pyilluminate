@@ -1032,7 +1032,12 @@ class Illuminate:
             self._led_state.data[...] = 0
             led_cache = led
         else:
-            led_cache = list(set(self._led_cache).union(led))
+            if np.array_equal(color, np.zeros_like(color)):
+                # When the LEDs are set to 0 color, we want to consider
+                # them "off" in the cached state
+                led_cache = list(set(self._led_cache).difference(led))
+            else:
+                led_cache = list(set(self._led_cache).union(led))
         self._led_state.data[led] = color
         self._led_cache = led_cache
 
@@ -1052,7 +1057,7 @@ class Illuminate:
     def fill_array(self) -> None:
         """Fill the LED array with default color."""
         self.ask('ff')
-        self._update_led_state(list(range(self._led_count)), force_clear=True)
+        self._update_led_state(list(range(self._led_count)))
 
     def brightfield(self) -> None:
         """Display brightfield pattern."""
