@@ -58,6 +58,8 @@ known_mac_addresses = {
 # https://forum.pjrc.com/threads/54773-Inreasing-USB-Serial-Buffer-Teensy-3-2
 MAX_ARGUMENT_CHAR_COUNT = 64 * 1
 
+thread_lock = RLock()
+
 
 class DelayedKeyboardInterrupt:
     def __enter__(self):
@@ -81,38 +83,24 @@ class DelayedKeyboardInterrupt:
             self.old_handler(*self.signal_received)
 
 
-def with_thread_lock(func):
-    if isinstance(func, staticmethod):
-        @staticmethod
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            thread_lock = RLock()
-            with thread_lock:
-                # We only want to prevent interrupts after the
-                # thread lock has been received. We want to be able
-                # to kill the system in case of deadlock
-                with DelayedKeyboardInterrupt():
-                    return func(*args, **kwargs)
-    elif isinstance(func, classmethod):
-        @classmethod
-        @wraps(func)
-        def wrapper(cls, *args, **kwargs):
-            thread_lock = RLock()
-            with thread_lock:
-                # We only want to prevent interrupts after the
-                # thread lock has been received. We want to be able
-                # to kill the system in case of deadlock
-                with DelayedKeyboardInterrupt():
-                    return func(cls, *args, **kwargs)
-    else:
-        @wraps(func)
-        def wrapper(self, *args, **kwargs):
-            with self._thread_lock:
-                # We only want to prevent interrupts after the
-                # thread lock has been received. We want to be able
-                # to kill the system in case of deadlock
-                with DelayedKeyboardInterrupt():
-                    return func(self, *args, **kwargs)
+def with_thread_lock_static(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        with thread_lock:
+            # We only want to prevent interrupts after the
+            # thread lock has been received. We want to be able
+            # to kill the system in case of deadlock
+            with DelayedKeyboardInterrupt():
+                return func(*args, **kwargs)
+    return wrapper
+
+
+def with_thread_lock_instance(func):
+    @wraps(func)
+    def wrapper(self, *args, **kwargs):
+        with thread_lock:
+            with DelayedKeyboardInterrupt():
+                return func(self, *args, **kwargs)
     return wrapper
 
 
@@ -192,7 +180,7 @@ class Illuminate:
         return devices
 
     @staticmethod
-    @with_thread_lock
+    @with_thread_lock_static
     def list_all_serial_numbers(serial_numbers=None):
         """Find all the currently connected Illuminate serial numbers.
 
@@ -222,7 +210,7 @@ class Illuminate:
         return serial_numbers
 
     @staticmethod
-    @with_thread_lock
+    @with_thread_lock_static
     def _device_serial_number_pairs(serial_numbers=None):
         com = comports()
         pairs = [
@@ -281,8 +269,6 @@ class Illuminate:
         self._led_cache = []
         self._maximum_current = maximum_current
 
-        self._thread_lock = RLock()
-
         # Create default values for device parameters
         self._color = (0, 0, 0)
         self._mac_address = ""
@@ -337,7 +323,7 @@ class Illuminate:
         """The human readable name of the device."""
         return self._device_name
 
-    @with_thread_lock
+    @with_thread_lock_instance
     def _load_parameters(self) -> None:
         """Read the parameters from the illuminate board.
 
@@ -379,7 +365,7 @@ class Illuminate:
         led_state['serial_number'] = self.serial_number
         self._led_state = led_state
 
-    @with_thread_lock
+    @with_thread_lock_instance
     def _read_led_positions(self):
         # This method is defined so that other creators of LED boards
         # Can redfine it as necessary to optimize various aspects.
@@ -440,7 +426,7 @@ class Illuminate:
     def __exit__(self, *args):
         self.close()
 
-    @with_thread_lock
+    @with_thread_lock_instance
     def _find_port_number(self):
         if self.serial.port is None:
             if self.serial_number is None:
@@ -456,7 +442,7 @@ class Illuminate:
             self.serial.port = port
             self.serial_number = serial_number
 
-    @with_thread_lock
+    @with_thread_lock_instance
     def open(self) -> None:
         if not self.serial.isOpen():
             self._find_port_number()
@@ -494,7 +480,7 @@ class Illuminate:
                 self._lock_release()
                 raise e
 
-    @with_thread_lock
+    @with_thread_lock_instance
     def _open(self) -> None:
         """Open the serial port. Only useful if you closed it."""
         if not self.serial.isOpen():
@@ -521,7 +507,7 @@ class Illuminate:
         # get/set firmware constants
         self.maximum_current = self._maximum_current
 
-    @with_thread_lock
+    @with_thread_lock_instance
     def _open_startup_procedure(self):
         sleep(0.1)
 
@@ -601,7 +587,7 @@ class Illuminate:
     def __del__(self):
         self.close()
 
-    @with_thread_lock
+    @with_thread_lock_instance
     def close(self) -> None:
         """Force close the serial port."""
         if self.serial is not None and self.serial.isOpen():
@@ -656,7 +642,7 @@ class Illuminate:
             self._lock.release()
             self._lock = None
 
-    @with_thread_lock
+    @with_thread_lock_instance
     def write(self, data) -> None:
         """Write data to the port.
 
@@ -668,7 +654,7 @@ class Illuminate:
             data = (data + '\n').encode('utf-8')
         self.serial.write(data)
 
-    @with_thread_lock
+    @with_thread_lock_instance
     def read(self, size: int=10000) -> bytearray:
         """Read data from the serial port.
 
@@ -682,7 +668,7 @@ class Illuminate:
             raise RuntimeError("__init__ must be successfully called first")
         return self.serial.read(size)
 
-    @with_thread_lock
+    @with_thread_lock_instance
     def readline(self) -> str:
         """Call underlying readline and decode as utf-8."""
         if self.serial is None:
@@ -690,7 +676,7 @@ class Illuminate:
         b = self.serial.readline()
         return b.decode('utf-8')
 
-    @with_thread_lock
+    @with_thread_lock_instance
     def read_paragraph(self, raw=False) -> List[str]:
         """Read a whole paragraph of text.
 
@@ -720,7 +706,7 @@ class Illuminate:
             if '-==-' in line_stripped:
                 return paragraph
 
-    @with_thread_lock
+    @with_thread_lock_instance
     def ask(self, data: str) -> Union[int, float, None]:
         """Send data, read the output, check for error, extract a number."""
         p = self._ask_list(data)
@@ -764,13 +750,13 @@ class Illuminate:
         else:
             return None
 
-    @with_thread_lock
+    @with_thread_lock_instance
     def _ask_list(self, data: str, raw: bool=False) -> List[str]:
         """Read data, return as list of strings."""
         self.write(data)
         return self.read_paragraph(raw)
 
-    @with_thread_lock
+    @with_thread_lock_instance
     def _ask_string(self, data: str, raw: bool =False) -> str:
         """Read data, return as a single string."""
         p = self._ask_list(data, raw)
@@ -820,7 +806,7 @@ class Illuminate:
         return self._ask_string('version')
 
     @property
-    @with_thread_lock
+    @with_thread_lock_instance
     def autoclear(self) -> bool:
         """Toggle clearing of array between led updates.
 
@@ -861,7 +847,7 @@ class Illuminate:
         return self._autoupdate
 
     @autoupdate.setter
-    @with_thread_lock
+    @with_thread_lock_instance
     def autoupdate(self, value: bool=None) -> None:
         # The autoupdate command from the teensy toggles the
         # autoupdate bit, so we must remember the state of autoupdate
@@ -922,7 +908,7 @@ class Illuminate:
         return user_color
 
     @color.setter
-    @with_thread_lock
+    @with_thread_lock_instance
     def color(self, c: Union[float, Iterable[float]]):
         if not isinstance(c, collections.abc.Iterable):
             # Make it a 3 tuple
@@ -1027,7 +1013,7 @@ class Illuminate:
         raise AttributeError(
             "The ``leds`` attribute doesn't exist. Did you mean ``led``")
 
-    @with_thread_lock
+    @with_thread_lock_instance
     def turn_on_led(self, leds: Union[int, Iterable[int]]) -> None:
         """Turn on a single LED(or multiple LEDs in an iterable).
 
@@ -1102,7 +1088,7 @@ class Illuminate:
     def _led(self, value):
         self._update_led_state(value)
 
-    @with_thread_lock
+    @with_thread_lock_instance
     def _update_led_state(self, led, force_clear=False):
         # The LED state might not exist if the system hasn't booted up
         # Therefore, skip any errors that may occur on "Unefined variable"
@@ -1126,7 +1112,7 @@ class Illuminate:
         self._led_state.data[led] = color
         self._led_cache = led_cache
 
-    @with_thread_lock
+    @with_thread_lock_instance
     def clear(self) -> None:
         """Clear the LED array."""
         self.ask('x')
@@ -1140,7 +1126,7 @@ class Illuminate:
                 "Contact support for help.")
         self.ask('u')
 
-    @with_thread_lock
+    @with_thread_lock_instance
     def fill_array(self) -> None:
         """Fill the LED array with default color."""
         self.ask('ff')
@@ -1498,7 +1484,7 @@ class Illuminate:
         j = json.loads(self._ask_string('pledposna'))
         return j['led_position_list_na']
 
-    @with_thread_lock
+    @with_thread_lock_instance
     def discoparty_demo(self, n_leds=1, time=10):
         """Run a demo routine to show what the array can do.
 
@@ -1514,7 +1500,7 @@ class Illuminate:
         self.write('disco.' + str(n_leds))
         self._finish_demo(time)
 
-    @with_thread_lock
+    @with_thread_lock_instance
     def demo(self, time: float=10) -> None:
         """Run a demo routine to show what the array can do.
 
@@ -1538,7 +1524,7 @@ class Illuminate:
             raise inst
         self.serial.timeout = previous_timeout
 
-    @with_thread_lock
+    @with_thread_lock_instance
     def water_drop_demo(self, time: float=10) -> None:
         """Water drop demo."""
         # Basically, if you let this one go on, and it actually returns
@@ -1547,7 +1533,7 @@ class Illuminate:
         self.write('water')
         self._finish_demo(time)
 
-    @with_thread_lock
+    @with_thread_lock_instance
     def _finish_demo(self, time: float) -> None:
         if self.serial is None:
             raise RuntimeError("__init__ must be successfully called first")
