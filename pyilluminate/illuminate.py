@@ -792,7 +792,6 @@ class Illuminate:
         return self._ask_string('version')
 
     @property
-    @with_thread_lock
     def autoclear(self) -> bool:
         """Toggle clearing of array between led updates.
 
@@ -807,6 +806,7 @@ class Illuminate:
         return self._autoclear
 
     @autoclear.setter
+    @with_thread_lock
     def autoclear(self, value: bool=None) -> None:
         # The autoclear command from the teensy toggles the
         # autoclear bit, so we must remember the state of autoclear
