@@ -58,8 +58,6 @@ known_mac_addresses = {
 # https://forum.pjrc.com/threads/54773-Inreasing-USB-Serial-Buffer-Teensy-3-2
 MAX_ARGUMENT_CHAR_COUNT = 64 * 1
 
-thread_lock = RLock()
-
 
 class DelayedKeyboardInterrupt:
     def __enter__(self):
@@ -83,22 +81,10 @@ class DelayedKeyboardInterrupt:
             self.old_handler(*self.signal_received)
 
 
-def with_thread_lock_static(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        with thread_lock:
-            # We only want to prevent interrupts after the
-            # thread lock has been received. We want to be able
-            # to kill the system in case of deadlock
-            with DelayedKeyboardInterrupt():
-                return func(*args, **kwargs)
-    return wrapper
-
-
 def with_thread_lock_instance(func):
     @wraps(func)
     def wrapper(self, *args, **kwargs):
-        with thread_lock:
+        with self._thread_lock:
             with DelayedKeyboardInterrupt():
                 return func(self, *args, **kwargs)
     return wrapper
@@ -180,7 +166,6 @@ class Illuminate:
         return devices
 
     @staticmethod
-    @with_thread_lock_static
     def list_all_serial_numbers(serial_numbers=None):
         """Find all the currently connected Illuminate serial numbers.
 
@@ -210,7 +195,6 @@ class Illuminate:
         return serial_numbers
 
     @staticmethod
-    @with_thread_lock_static
     def _device_serial_number_pairs(serial_numbers=None):
         com = comports()
         pairs = [
@@ -268,6 +252,8 @@ class Illuminate:
         self._led_state = None
         self._led_cache = []
         self._maximum_current = maximum_current
+
+        self._thread_lock = RLock()
 
         # Create default values for device parameters
         self._color = (0, 0, 0)
