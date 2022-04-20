@@ -82,14 +82,37 @@ class DelayedKeyboardInterrupt:
 
 
 def with_thread_lock(func):
-    @wraps(func)
-    def wrapper(self, *args, **kwargs):
-        with self._thread_lock:
-            # We only want to prevent interrupts after the
-            # thread lock has been received. We want to be able
-            # to kill the system in case of deadlock
-            with DelayedKeyboardInterrupt():
-                return func(self, *args, **kwargs)
+    if isinstance(func, staticmethod):
+        @staticmethod
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            thread_lock = RLock()
+            with thread_lock:
+                # We only want to prevent interrupts after the
+                # thread lock has been received. We want to be able
+                # to kill the system in case of deadlock
+                with DelayedKeyboardInterrupt():
+                    return func(*args, **kwargs)
+    elif isinstance(func, classmethod):
+        @classmethod
+        @wraps(func)
+        def wrapper(cls, *args, **kwargs):
+            thread_lock = RLock()
+            with thread_lock:
+                # We only want to prevent interrupts after the
+                # thread lock has been received. We want to be able
+                # to kill the system in case of deadlock
+                with DelayedKeyboardInterrupt():
+                    return func(cls, *args, **kwargs)
+    else:
+        @wraps(func)
+        def wrapper(self, *args, **kwargs):
+            with self._thread_lock:
+                # We only want to prevent interrupts after the
+                # thread lock has been received. We want to be able
+                # to kill the system in case of deadlock
+                with DelayedKeyboardInterrupt():
+                    return func(self, *args, **kwargs)
     return wrapper
 
 
