@@ -1,4 +1,4 @@
-## 0.6.15 (2022/04/20)
+## 0.6.15 (2022/04/21)
 
  * Make the Illuminate driver thread safe.
 
