@@ -130,7 +130,8 @@ class Illuminate:
         '_has_autoupdate',
         '_autoclear',
         '_autoupdate',
-        '_scale_factor'
+        '_scale_factor',
+        '_thread_lock'
     ]
     _known_device = known_devices
     _known_serial_numbers = known_serial_numbers
