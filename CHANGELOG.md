@@ -1,3 +1,7 @@
+## 0.6.15 (2022/04/21)
+
+ * Make the Illuminate driver thread safe.
+
 ## 0.6.14 (2022/03/15)
 
  * Ensure that LEDs that are individually turned off are removed from the LED

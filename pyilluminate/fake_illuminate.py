@@ -2,6 +2,42 @@ from .illuminate import Illuminate
 import collections
 import numpy as np
 import xarray as xr
+import threading
+import signal
+import logging
+from functools import wraps
+from threading import RLock
+
+
+class DelayedKeyboardInterrupt:
+    def __enter__(self):
+        self.signal_received = False
+        self._is_main_thread = threading.current_thread() is \
+            threading.main_thread()
+        if self._is_main_thread:
+            # the signal api is only available to the main thread in python
+            self.old_handler = signal.signal(signal.SIGINT, self.handler)
+
+    def handler(self, sig, frame):
+        self.signal_received = (sig, frame)
+        logging.debug('SIGINT received. Delaying KeyboardInterrupt.')
+
+    def __exit__(self, type, value, traceback):
+        # During the cleanup of objects, the signal handler of the main
+        # Thread might have already been set to None or something
+        if self._is_main_thread and self.old_handler is not None:
+            signal.signal(signal.SIGINT, self.old_handler)
+        if self.signal_received:
+            self.old_handler(*self.signal_received)
+
+
+def with_thread_lock(func):
+    @wraps(func)
+    def wrapper(self, *args, **kwargs):
+        with self._thread_lock:
+            with DelayedKeyboardInterrupt():
+                return func(self, *args, **kwargs)
+    return wrapper
 
 
 class FakeIlluminate(Illuminate):
@@ -16,6 +52,7 @@ class FakeIlluminate(Illuminate):
         """
         kwargs.setdefault('precision', 8)
         kwargs.setdefault('interface_bit_depth', 16)
+        self._thread_lock = RLock()
         self.N_leds = N_leds
         self.autoclear = True
         self._precision = kwargs['precision']
@@ -66,9 +103,11 @@ class FakeIlluminate(Illuminate):
         return self._autoclear
 
     @autoclear.setter
+    @with_thread_lock
     def autoclear(self, value):
         self._autoclear = bool(value)
 
+    @with_thread_lock
     def open(self):
         pass
 
@@ -80,6 +119,7 @@ class FakeIlluminate(Illuminate):
     def device_name(self):
         return 'fake-illuminate'
 
+    @with_thread_lock
     def close(self):
         pass
 
@@ -129,6 +169,7 @@ class FakeIlluminate(Illuminate):
         return self._color
 
     @color.setter
+    @with_thread_lock
     def color(self, c):
         if not isinstance(c, collections.abc.Iterable):
             # Make it a 3 tuple
@@ -142,9 +183,11 @@ class FakeIlluminate(Illuminate):
 
         self._color = user_color
 
+    @with_thread_lock
     def clear(self):
         self._update_led_state([], force_clear=True)
 
+    @with_thread_lock
     def fill_array(self, led_type='rgb'):
         # Ignore led_type for the fake illuminate device
         self._led = list(range(self.N_leds))
