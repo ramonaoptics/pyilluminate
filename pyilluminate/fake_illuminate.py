@@ -52,13 +52,12 @@ class FakeIlluminate(Illuminate):
         """
         kwargs.setdefault('precision', 8)
         kwargs.setdefault('interface_bit_depth', 16)
+        self._thread_lock = RLock()
         self.N_leds = N_leds
         self.autoclear = True
         self._precision = kwargs['precision']
         self._interface_bit_depth = kwargs['interface_bit_depth']
         self._maximum_current = maximum_current
-
-        self._thread_lock = RLock()
 
         self._scale_factor = (
             ((1 << self._interface_bit_depth) - 1) /
