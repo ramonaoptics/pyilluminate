@@ -33,11 +33,11 @@ The modes can be:
 """
 
 known_devices = [
-    {   # Example device structure
-        'serial_number': 'XXXXXXX',
-        'device_name': 'some_board_name',
-        'mac_address': '01:23:45:67:89:AB',
-    },
+    # {   # Example device structure
+    #     'serial_number': 'XXXXXXX',
+    #     'device_name': 'some_board_name',
+    #     'mac_address': '01:23:45:67:89:AB',
+    # },
 ]
 
 known_serial_numbers = [
@@ -422,6 +422,10 @@ class Illuminate:
                 serial_numbers = [self.serial_number]
             available_ports = self._device_serial_number_pairs(
                 serial_numbers)
+            if len(self._known_serial_numbers) != 0:
+                available_ports = [p
+                                   for p in available_ports
+                                   if p in self._known_serial_numbers]
             if len(available_ports) == 0:
                 raise RuntimeError("No Illuminate devices found")
 

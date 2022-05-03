@@ -1,3 +1,7 @@
+## 0.6.16 (2022/05/03)
+
+ * When opening teensies, ensure that only known devices are opened.
+
 ## 0.6.15 (2022/04/21)
 
  * Make the Illuminate driver thread safe.
