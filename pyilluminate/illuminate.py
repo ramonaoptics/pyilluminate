@@ -425,7 +425,7 @@ class Illuminate:
             if len(self._known_serial_numbers) != 0:
                 available_ports = [p
                                    for p in available_ports
-                                   if p in self._known_serial_numbers]
+                                   if p[1] in self._known_serial_numbers]
             if len(available_ports) == 0:
                 raise RuntimeError("No Illuminate devices found")
 
