@@ -1,3 +1,7 @@
+## 0.6.17 (2022/05/03)
+
+ * When opening teensies, ensure that only known devices are opened. (0.6.16 was broken)
+
 ## 0.6.16 (2022/05/03)
 
  * When opening teensies, ensure that only known devices are opened.
