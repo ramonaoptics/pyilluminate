@@ -1,6 +1,7 @@
 ## 0.6.18 (2022/10/16)
 
  * Lazy import xarray to speedup import time.
+ * Imporve import time by using miniver instead of versioneer
 
 ## 0.6.17 (2022/05/03)
 
