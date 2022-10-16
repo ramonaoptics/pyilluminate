@@ -1,3 +1,7 @@
+## 0.6.19 (2022/10/16)
+
+ * improve release process.
+
 ## 0.6.18 (2022/10/16)
 
  * Lazy import xarray to speedup import time.
