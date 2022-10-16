@@ -354,6 +354,7 @@ class Illuminate:
 
     @with_thread_lock
     def _read_led_positions(self):
+        import xarray as xr
         # This method is defined so that other creators of LED boards
         # Can redfine it as necessary to optimize various aspects.
 
