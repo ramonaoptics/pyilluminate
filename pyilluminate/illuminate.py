@@ -6,8 +6,6 @@ from typing import List, Union, Optional, Iterable, Tuple
 import collections
 from packaging.version import Version
 
-import xarray as xr
-
 import numpy as np
 from serial import Serial, SerialException
 from serial.tools.list_ports import comports
@@ -316,6 +314,8 @@ class Illuminate:
 
         Function is called automatically when the device is opened.
         """
+        import xarray as xr
+
         p_raw = self.parameters_json
         parameters = {
             'interface_bit_depth': 8,
@@ -354,6 +354,7 @@ class Illuminate:
 
     @with_thread_lock
     def _read_led_positions(self):
+        import xarray as xr
         # This method is defined so that other creators of LED boards
         # Can redfine it as necessary to optimize various aspects.
 
@@ -1439,7 +1440,7 @@ class Illuminate:
         return self._ask_string('pp')
 
     @property
-    def led_positions(self) -> xr.DataArray:
+    def led_positions(self):
         """Position of each LED in cartesian coordinates[mm]."""
         if self._led_positions is None:
             self._read_led_positions()
@@ -1447,7 +1448,7 @@ class Illuminate:
         return self._led_positions
 
     @property
-    def led_state(self) -> xr.DataArray:
+    def led_state(self):
         """Current state of the Illuminate LEDs in RGB as a DataArray."""
         return self._led_state
 
