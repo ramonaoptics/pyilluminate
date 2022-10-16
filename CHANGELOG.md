@@ -1,3 +1,7 @@
+## 0.6.18 (2022/10/16)
+
+ * Lazy import xarray to speedup import time.
+
 ## 0.6.17 (2022/05/03)
 
  * When opening teensies, ensure that only known devices are opened. (0.6.16 was broken)
