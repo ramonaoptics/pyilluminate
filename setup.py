@@ -13,6 +13,12 @@ def get_version_and_cmdclass(pkg_path):
     return module.__version__, module.get_cmdclass(pkg_path)
 
 
+with open('README.md', encoding='utf-8') as readme_file:
+    readme = readme_file.read()
+
+with open('CHANGELOG.md', encoding='utf-8') as changelog_file:
+    changelog = changelog_file.read()
+
 version, cmdclass = get_version_and_cmdclass('pyilluminate')
 
 setup(
@@ -22,6 +28,8 @@ setup(
     author_email='info@ramonaoptics.com',
     license='BSD',
     python_requires='>=3.7',
+    long_description=readme + '\n\n' + changelog,
+    long_description_content_type='text/markdown',
     install_requires=[
         'pyserial',
         'multiuserfilelock',

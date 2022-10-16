@@ -1,11 +1,6 @@
-"""Control the SciMicroscopy Illuminate with ease.
+"""Control illumination devices with ease.
 
-This module defines functions to control the SciMicroscopy module in a modern
-(Python 3) fashinon.
-
-Raise exceptions on failure, don't worry about "set" and "get" methods.
-
-Copyright (C) 2018, Ramona Optics, Inc.
+Copyright (C) 2018-2022, Ramona Optics, Inc.
 """
 
 from .illuminate import Illuminate
