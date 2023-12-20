@@ -125,7 +125,6 @@ class Illuminate:
         '_serial_number',
         '_led_count',
         '_sequence_bit_depth',
-        '_has_autoupdate',
         '_autoclear',
         '_autoupdate',
         '_scale_factor',
@@ -527,10 +526,6 @@ class Illuminate:
             raise e
 
         version = Version(self.version)
-        if version > Version('1.13'):
-            self._has_autoupdate = True
-        else:
-            self._has_autoupdate = False
 
         # Set it to clear between commands.
         # This may have changed due to the user having previously
@@ -841,19 +836,10 @@ class Illuminate:
     @autoupdate.setter
     @with_thread_lock
     def autoupdate(self, value: bool=None) -> None:
-        # The autoupdate command from the teensy toggles the
-        # autoupdate bit, so we must remember the state of autoupdate
-        # in python, and just return the cached value
         if value:
-            if self._has_autoupdate:
-                self._ask_string('au.1')
+            self._ask_string('au.1')
             self._autoupdate = True
         else:
-            if not self._has_autoupdate:
-                # Only raise an error when autoUpdate is being set to false
-                raise ValueError(
-                    "This version of the LED Driver doesn't support "
-                    "autoUpdate. Contact support for more information.")
             self._ask_string('au.0')
             self._autoupdate = False
 
@@ -1057,8 +1043,7 @@ class Illuminate:
             old_autoupdate = self.autoupdate
             # if autoupdate isn't found, then gracefully set the LEDs
             # sequentially, even if it blinks for the user
-            if self._has_autoupdate:
-                self.autoupdate = False
+            self.autoupdate = False
             for i in range(command_chunks):
                 these_leds = leds[
                     i * max_leds_per_command:(i + 1) * max_leds_per_command]
@@ -1068,8 +1053,7 @@ class Illuminate:
                     self.autoclear = False
             self.autoclear = old_autoclear
             self.autoupdate = old_autoupdate
-            if self._has_autoupdate and old_autoupdate:
-                self.update()
+            self.update()
         self._led = leds
 
     @property
@@ -1112,10 +1096,6 @@ class Illuminate:
 
     def update(self) -> None:
         """Update the LED array."""
-        if not self._has_autoupdate:
-            raise NotImplementedError(
-                "This command requires an updated version of the firmware. "
-                "Contact support for help.")
         self.ask('u')
 
     @with_thread_lock

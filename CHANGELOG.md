@@ -1,3 +1,7 @@
+## 0.7.0 (2023/12/20)
+
+* Assume that all board have the ability to toggle autoupdate on and off.
+
 ## 0.6.19 (2022/10/16)
 
  * improve release process.
