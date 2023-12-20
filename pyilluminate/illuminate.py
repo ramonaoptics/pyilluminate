@@ -251,6 +251,7 @@ class Illuminate:
         self._led_state = None
         self._led_cache = []
         self._maximum_current = maximum_current
+        self._has_autoupdate = None
 
         self._thread_lock = RLock()
 
