@@ -839,6 +839,9 @@ class Illuminate:
         if value:
             self._ask_string('au.1')
             self._autoupdate = True
+        else:
+            self._ask_string('au.0')
+            self._autoupdate = False
 
     @property
     def NA(self) -> float:
