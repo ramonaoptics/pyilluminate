@@ -836,8 +836,9 @@ class Illuminate:
     @autoupdate.setter
     @with_thread_lock
     def autoupdate(self, value: bool=None) -> None:
-        self._ask_string('au.1')
-        self._autoupdate = True
+        if value:
+            self._ask_string('au.1')
+            self._autoupdate = True
 
     @property
     def NA(self) -> float:
