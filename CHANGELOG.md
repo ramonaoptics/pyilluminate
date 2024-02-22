@@ -1,3 +1,9 @@
+## 0.7.1 (2024/02/22)
+
+* Address bug where setting long lists of LED strings would force an update to
+  the array. This may have caused unwanted flashing for certain users.
+
+
 ## 0.7.0 (2023/12/20)
 
 * Assume that all board have the ability to toggle autoupdate on and off.
