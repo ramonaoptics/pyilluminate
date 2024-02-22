@@ -1053,7 +1053,8 @@ class Illuminate:
                     self.autoclear = False
             self.autoclear = old_autoclear
             self.autoupdate = old_autoupdate
-            self.update()
+            if old_autoupdate:
+                self.update()
         self._led = leds
 
     @property
