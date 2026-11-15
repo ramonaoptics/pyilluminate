@@ -1,3 +1,9 @@
+## 0.8.0 (2026/11/15)
+
+* Improve the locking procedure.
+* Require Python 3.11 or newer.
+
+
 ## 0.7.1 (2024/02/22)
 
 * Address bug where setting long lists of LED strings would force an update to
