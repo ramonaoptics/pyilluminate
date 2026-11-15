@@ -1,4 +1,5 @@
 import json
+import os
 import re
 from time import sleep
 from warnings import warn
@@ -18,6 +19,20 @@ from functools import wraps
 from threading import RLock
 
 locks_dir = Path(tmpdir) / 'pyilluminate'
+
+
+def _group_if_member(group):
+    if group is None or os.name == 'nt':
+        return None
+    import grp
+    try:
+        gid = grp.getgrnam(group).gr_gid
+    except KeyError:
+        return None
+    if gid == os.getegid() or gid in os.getgroups():
+        return group
+    return None
+
 
 """
 Trigger notes from Zack's code.
@@ -601,7 +616,7 @@ class Illuminate:
         # lock will only be called if the device is closed
         # (when isOpen is called).
         return MultiUserFileLock(unique_pyilluminate_locktxt,
-                                 group=group, chmod=chmod,
+                                 group=_group_if_member(group), chmod=chmod,
                                  timeout=0.001)
 
     def _lock_acquire(self) -> None:
@@ -850,7 +865,7 @@ class Illuminate:
 
     @NA.setter
     def NA(self, value: float) -> None:
-        self.ask(f'na.{value*100:.0f}')
+        self.ask(f'na.{value * 100:.0f}')
         self._NA = round(value, 2)
 
     @property
@@ -956,7 +971,7 @@ class Illuminate:
     @array_distance.setter
     def array_distance(self, distance: float):
         # sad, [100 * dist(mm) - -or-- 1000 * dist(cm)]
-        self.ask('sad.' + f'{distance*1000*100:.0f}')
+        self.ask('sad.' + f'{distance * 1000 * 100:.0f}')
         self._array_distance = distance
 
     @property
@@ -1131,12 +1146,12 @@ class Illuminate:
     def annulus(self, minNA: float, maxNA: float) -> None:
         """Display annulus pattern set by min/max NA."""
         # an.[minNA * 100].[maxNA * 100]
-        self.ask(f"an.{minNA*100:.0f}.{maxNA*100:.0f}")
+        self.ask(f"an.{minNA * 100:.0f}.{maxNA * 100:.0f}")
 
     def half_annulus(self, pattern: str, minNA: float, maxNA: float) -> None:
         """Illuminate half annulus."""
         # Find out what the types are
-        self.ask(f"ha.{type}.{minNA*100:.0f}.{maxNA*100:.0f}")
+        self.ask(f"ha.{type}.{minNA * 100:.0f}.{maxNA * 100:.0f}")
 
     def draw_quadrant(self, red: int, green: int, blue: int) -> None:
         """Draws single quadrant."""
@@ -1405,7 +1420,7 @@ class Illuminate:
             None
 
         """
-        return self.ask('delay.' + f'{t*1000:.0f}')
+        return self.ask('delay.' + f'{t * 1000:.0f}')
 
     def print_values(self):
         """Print LED value for software interface."""
