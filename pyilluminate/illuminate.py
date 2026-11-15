@@ -1,4 +1,5 @@
 import json
+import os
 import re
 from time import sleep
 from warnings import warn
@@ -18,6 +19,20 @@ from functools import wraps
 from threading import RLock
 
 locks_dir = Path(tmpdir) / 'pyilluminate'
+
+
+def _group_if_member(group):
+    if group is None or os.name == 'nt':
+        return None
+    import grp
+    try:
+        gid = grp.getgrnam(group).gr_gid
+    except KeyError:
+        return None
+    if gid == os.getegid() or gid in os.getgroups():
+        return group
+    return None
+
 
 """
 Trigger notes from Zack's code.
@@ -601,7 +616,7 @@ class Illuminate:
         # lock will only be called if the device is closed
         # (when isOpen is called).
         return MultiUserFileLock(unique_pyilluminate_locktxt,
-                                 group=group, chmod=chmod,
+                                 group=_group_if_member(group), chmod=chmod,
                                  timeout=0.001)
 
     def _lock_acquire(self) -> None:
